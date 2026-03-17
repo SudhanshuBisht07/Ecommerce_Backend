@@ -1,0 +1,19 @@
+# Project exclude paths
+/target/
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Maven build output
+target/
+
+# Environment & secrets
+.env
+application-prod.properties
+application-local.properties
+
+# OS files
+.DS_Store
+Thumbs.db
