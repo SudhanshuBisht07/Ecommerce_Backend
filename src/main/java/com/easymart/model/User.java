@@ -32,7 +32,7 @@ public class User {
 
     private USER_ROLE role=USER_ROLE.ROLE_CUSTOMER;
 
-    @OneToMany
+    @OneToMany(fetch = FetchType.EAGER)
     private Set<Address> addresses = new HashSet<>();
     @ManyToMany
     @JsonIgnore //this data will not be used by frontend
