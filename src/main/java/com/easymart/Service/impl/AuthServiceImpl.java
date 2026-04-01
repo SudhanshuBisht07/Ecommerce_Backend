@@ -5,9 +5,11 @@ import com.easymart.Service.EmailService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.USER_ROLE;
 import com.easymart.model.Cart;
+import com.easymart.model.Seller;
 import com.easymart.model.User;
 import com.easymart.model.VerificationCode;
 import com.easymart.repository.CartRepository;
+import com.easymart.repository.SellerRepository;
 import com.easymart.repository.UserRepository;
 import com.easymart.repository.VerificationCodeRepository;
 import com.easymart.request.LoginRequest;
@@ -42,15 +44,27 @@ public class AuthServiceImpl implements AuthService {
     private final VerificationCodeRepository verificationCodeRepository;
     private final EmailService emailService;
     private final CustomUserServiceImpl customUserService;
+    private final SellerRepository sellerRepository;
 
     @Override
-    public void sentLoginOtp(String email) throws Exception {
+    public void sentLoginOtp(String email, USER_ROLE role) throws Exception {
         String SIGNING_PREFIX="signing_";
+        String SELLER_PREFIX="seller_";
         if(email.startsWith(SIGNING_PREFIX)){
             email=email.substring(SIGNING_PREFIX.length());
-            User user=userRepository.findByEmail(email);
-            if(user==null){
-                throw new Exception("user not exist with provided email");
+
+            if(role.equals(USER_ROLE.ROLE_SELLER)) {
+                Seller seller =sellerRepository.findByEmail(email);
+                if(seller==null){
+                    throw new Exception("seller not found..");
+                }
+            }
+            else{
+                User user = userRepository.findByEmail(email);
+                if (user == null) {
+                    throw new Exception("user not exist with provided email");
+                }
+
             }
         }
         VerificationCode exists=verificationCodeRepository.findByEmail(email);
@@ -117,6 +131,10 @@ public class AuthServiceImpl implements AuthService {
     }
     private Authentication authenticate(String username, String otp){
         UserDetails userDetails=customUserService.loadUserByUsername(username);
+        String SELLER_PREFIX="seller_";
+        if(username.startsWith(SELLER_PREFIX)){
+            username=username.substring(SELLER_PREFIX.length());
+        }
         if(userDetails==null){
             throw new BadCredentialsException("invalid username or password");
         }

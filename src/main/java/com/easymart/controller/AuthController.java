@@ -5,6 +5,7 @@ import com.easymart.domain.USER_ROLE;
 import com.easymart.model.User;
 import com.easymart.model.VerificationCode;
 import com.easymart.repository.UserRepository;
+import com.easymart.request.LoginOtpRequest;
 import com.easymart.request.LoginRequest;
 import com.easymart.response.ApiResponse;
 import com.easymart.response.AuthResponse;
@@ -32,8 +33,8 @@ public class AuthController {
         return ResponseEntity.ok(res);
     }
     @PostMapping("/sent/login-signup-otp")
-    public ResponseEntity<ApiResponse> setOtpHandler(@RequestBody VerificationCode req) throws Exception {
-        authService.sentLoginOtp(req.getEmail());
+    public ResponseEntity<ApiResponse> setOtpHandler(@RequestBody LoginOtpRequest req) throws Exception {
+        authService.sentLoginOtp(req.getEmail(), req.getRole());
         ApiResponse res=new ApiResponse();
         res.setMessage("otp sent successfully");
         return ResponseEntity.ok(res);
