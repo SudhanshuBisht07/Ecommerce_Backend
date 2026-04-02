@@ -4,6 +4,7 @@ import com.easymart.Service.SellerService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.AccountStatus;
 import com.easymart.domain.USER_ROLE;
+import com.easymart.exceptions.SellerException;
 import com.easymart.model.Address;
 import com.easymart.model.Seller;
 import com.easymart.repository.AddressRepository;
@@ -26,7 +27,7 @@ public class SellerServiceImpl implements SellerService {
 
 
     @Override
-    public Seller getSellerProfile(String jwt) throws Exception {
+    public Seller getSellerProfile(String jwt) throws SellerException {
         String email=jwtProvider.getEmailFromJwtToken(jwt);
         return this.getSellerByEmail(email);
     }
@@ -53,15 +54,15 @@ public class SellerServiceImpl implements SellerService {
     }
 
     @Override
-    public Seller getSellerById(Long id) throws Exception {
-        return sellerRepository.findById(id).orElseThrow(()->new Exception("seller not found with id: "+id));
+    public Seller getSellerById(Long id) throws SellerException {
+        return sellerRepository.findById(id).orElseThrow(()->new SellerException("seller not found with id: "+id));
     }
 
     @Override
-    public Seller getSellerByEmail(String email) throws Exception {
+    public Seller getSellerByEmail(String email) throws SellerException {
         Seller seller=sellerRepository.findByEmail(email);
         if(seller==null){
-            throw new Exception("seller not found..");
+            throw new SellerException("seller not found..");
         }
         return seller;
     }
@@ -72,7 +73,7 @@ public class SellerServiceImpl implements SellerService {
     }
 
     @Override
-    public Seller updateSeller(Long id, Seller seller) throws Exception {
+    public Seller updateSeller(Long id, Seller seller) throws SellerException {
         Seller existingSeller=this.getSellerById(id);
         if(seller.getSellerName()!=null) {
             existingSeller.setSellerName(seller.getSellerName());
@@ -83,7 +84,7 @@ public class SellerServiceImpl implements SellerService {
         if(seller.getEmail() != null) {
             Seller emailExists = sellerRepository.findByEmail(seller.getEmail());
             if(emailExists != null && !emailExists.getId().equals(id)){
-                throw new Exception("Email already in use by another seller");
+                throw new SellerException("Email already in use by another seller");
             }
             existingSeller.setEmail(seller.getEmail());
         }
@@ -120,20 +121,20 @@ public class SellerServiceImpl implements SellerService {
     }
 
     @Override
-    public void deleteSeller(Long id) throws Exception {
+    public void deleteSeller(Long id) throws SellerException {
         Seller seller=getSellerById(id);
         sellerRepository.delete(seller);
     }
 
     @Override
-    public Seller verifyEmail(String email, String otp) throws Exception {
+    public Seller verifyEmail(String email, String otp) throws SellerException {
         Seller seller=getSellerByEmail(email);
         seller.setEmailVerified(true);
         return sellerRepository.save(seller);
     }
 
     @Override
-    public Seller updateSellerAccountStatus(Long sellerId, AccountStatus status) throws Exception {
+    public Seller updateSellerAccountStatus(Long sellerId, AccountStatus status) throws SellerException {
 
         Seller seller=getSellerById(sellerId);
         seller.setAccountStatus(status);

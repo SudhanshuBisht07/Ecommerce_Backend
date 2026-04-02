@@ -5,6 +5,7 @@ import com.easymart.Service.EmailService;
 import com.easymart.Service.SellerService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.AccountStatus;
+import com.easymart.exceptions.SellerException;
 import com.easymart.model.Seller;
 import com.easymart.model.SellerReport;
 import com.easymart.model.VerificationCode;
@@ -63,12 +64,12 @@ public class SellerController {
         return new ResponseEntity<>(savedSeller, HttpStatus.CREATED);
     }
     @GetMapping("/{id}")
-    public ResponseEntity<Seller> getSellerById(@PathVariable Long id)throws Exception {
+    public ResponseEntity<Seller> getSellerById(@PathVariable Long id)throws SellerException {
         Seller seller = sellerService.getSellerById(id);
         return new ResponseEntity<>(seller, HttpStatus.OK);
     }
     @GetMapping("/profile")
-    public ResponseEntity<Seller> getSellerByJwt(@RequestHeader("Authorization")String jwt)throws Exception{
+    public ResponseEntity<Seller> getSellerByJwt(@RequestHeader("Authorization")String jwt)throws SellerException{
         Seller seller=sellerService.getSellerProfile(jwt);
         return new ResponseEntity<>(seller, HttpStatus.OK);
     }
@@ -78,13 +79,13 @@ public class SellerController {
         return ResponseEntity.ok(sellers);
     }
     @PatchMapping()
-    public ResponseEntity<Seller> updateSeller(@RequestHeader("Authorization")String jwt, @RequestBody Seller seller)throws Exception{
+    public ResponseEntity<Seller> updateSeller(@RequestHeader("Authorization")String jwt, @RequestBody Seller seller)throws SellerException{
         Seller profile=sellerService.getSellerProfile(jwt);
         Seller updatedSeller=sellerService.updateSeller(profile.getId(), seller);
         return ResponseEntity.ok(updatedSeller);
     }
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSeller(@PathVariable Long id)throws Exception{
+    public ResponseEntity<Void> deleteSeller(@PathVariable Long id)throws SellerException{
         sellerService.deleteSeller(id);
         return ResponseEntity.noContent().build();
     }
