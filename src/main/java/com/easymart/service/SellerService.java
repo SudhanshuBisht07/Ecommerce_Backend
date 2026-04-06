@@ -1,4 +1,4 @@
-package com.easymart.Service;
+package com.easymart.service;
 
 import com.easymart.domain.AccountStatus;
 import com.easymart.exceptions.SellerException;

@@ -1,5 +1,4 @@
 package com.easymart.config;
-import org.springframework.security.config.Customizer;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,11 +22,14 @@ public class AppConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http)throws Exception{
         http.sessionManagement(management->management.sessionCreationPolicy(
                 SessionCreationPolicy.STATELESS
-        )).authorizeHttpRequests(authorize->authorize
-                .requestMatchers("/api/products/*/reviews").permitAll()
-                        .requestMatchers("/api/**").authenticated()
-                .anyRequest().permitAll()
-        ).addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
+        )).authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/products/**").permitAll()
+                        .requestMatchers("/sellers/profile").authenticated()
+                        .requestMatchers("/sellers/**").permitAll()
+                        .requestMatchers("/users/**").authenticated()
+                        .anyRequest().permitAll()
+                ).addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
                 .csrf(csrf->csrf.disable())
                 .cors(cors->cors.configurationSource(corsConfigurationSource()));
         return http.build();

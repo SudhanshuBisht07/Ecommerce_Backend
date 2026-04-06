@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -27,8 +29,8 @@ public class OrderItem {
     private String size;
     private int quantity;
 
-    private Integer mrpPrice;
-    private Integer sellingPrice;
+    private BigDecimal mrpPrice;
+    private BigDecimal sellingPrice;
     private Long userId;
 
 

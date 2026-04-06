@@ -1,7 +1,6 @@
-package com.easymart.Service;
+package com.easymart.service;
 
 import com.easymart.domain.USER_ROLE;
-import com.easymart.model.User;
 import com.easymart.request.LoginRequest;
 import com.easymart.response.AuthResponse;
 import com.easymart.response.SignupRequest;

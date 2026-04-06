@@ -1,6 +1,6 @@
-package com.easymart.Service.impl;
+package com.easymart.service.impl;
 
-import com.easymart.Service.UserService;
+import com.easymart.service.UserService;
 import com.easymart.config.JwtProvider;
 import com.easymart.model.User;
 import com.easymart.repository.UserRepository;

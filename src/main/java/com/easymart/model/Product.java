@@ -21,13 +21,14 @@ public class Product {
     private Long id;
     private String title;
     private String description;
+    private String brand;
     private BigDecimal mrpPrice;
     private BigDecimal sellingPrice;
     private double discountPercent;
     private int quantity;
     private String color;
 
-    @ElementCollection //creates seperate table for this
+    @ElementCollection(fetch = FetchType.EAGER) //creates seperate table for this
     private List<String> images = new ArrayList<>();
     private int numRatings;
 
@@ -39,9 +40,9 @@ public class Product {
 
     private LocalDateTime createdAt;
 
-    private String Sizes;
+    private String size;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Review> reviews = new ArrayList<>();
 
 

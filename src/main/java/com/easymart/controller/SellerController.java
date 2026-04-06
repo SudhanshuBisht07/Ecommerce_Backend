@@ -1,17 +1,15 @@
 package com.easymart.controller;
 
-import com.easymart.Service.AuthService;
-import com.easymart.Service.EmailService;
-import com.easymart.Service.SellerService;
+import com.easymart.service.AuthService;
+import com.easymart.service.EmailService;
+import com.easymart.service.SellerService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.AccountStatus;
 import com.easymart.exceptions.SellerException;
 import com.easymart.model.Seller;
-import com.easymart.model.SellerReport;
 import com.easymart.model.VerificationCode;
 import com.easymart.repository.VerificationCodeRepository;
 import com.easymart.request.LoginRequest;
-import com.easymart.response.ApiResponse;
 import com.easymart.response.AuthResponse;
 import com.easymart.utils.OtpUtil;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -56,11 +55,12 @@ public class SellerController {
         VerificationCode verificationCode=new VerificationCode();
         verificationCode.setOtp(otp);
         verificationCode.setEmail(savedSeller.getEmail());
+        verificationCode.setExpiresAt(LocalDateTime.now().plusMinutes(10));
         verificationCodeRepository.save(verificationCode);
         String subject="EasyMart email verification code.";
         String text="Welcome to EasyMart, verify your email using this link.";
         String frontend_url="http://localhost:3000/verify-seller/";
-        emailService.sendVerificationOtpEmail(savedSeller.getEmail(), verificationCode.getOtp(), subject, text + frontend_url);
+        emailService.sendVerificationOtpEmail(savedSeller.getEmail(), verificationCode.getOtp(), subject, text + frontend_url+ verificationCode.getOtp());
         return new ResponseEntity<>(savedSeller, HttpStatus.CREATED);
     }
     @GetMapping("/{id}")
@@ -88,6 +88,13 @@ public class SellerController {
     public ResponseEntity<Void> deleteSeller(@PathVariable Long id)throws SellerException{
         sellerService.deleteSeller(id);
         return ResponseEntity.noContent().build();
+    }
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Seller> updateSellerStatus(
+            @PathVariable Long id,
+            @RequestParam AccountStatus status) throws SellerException {
+        Seller updatedSeller = sellerService.updateSellerAccountStatus(id, status);
+        return ResponseEntity.ok(updatedSeller);
     }
 //    @GetMapping("/report")
 //    public ResponseEntity<SellerReport> getSellerReport(@RequestHeader("Authorization")String jwt)throws Exception{

@@ -1,4 +1,4 @@
-package com.easymart.Service;
+package com.easymart.service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;

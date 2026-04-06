@@ -19,11 +19,19 @@ public class GlobalException {
         return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);
     }
     @ExceptionHandler(ProductException.class)
-    public ResponseEntity<ErrorDetails> productExceptionHandler(ProductException se, WebRequest request){
+    public ResponseEntity<ErrorDetails> productExceptionHandler(ProductException pe, WebRequest request){
         ErrorDetails errorDetails=new ErrorDetails();
-        errorDetails.setError(se.getMessage());
+        errorDetails.setError(pe.getMessage());
         errorDetails.setDetails(request.getDescription(false));
         errorDetails.setTimestamp(LocalDateTime.now());
         return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);
+    }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorDetails> genericExceptionHandler(Exception e, WebRequest request) {
+        ErrorDetails errorDetails = new ErrorDetails();
+        errorDetails.setError(e.getMessage());
+        errorDetails.setDetails(request.getDescription(false));
+        errorDetails.setTimestamp(LocalDateTime.now());
+        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

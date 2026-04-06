@@ -1,4 +1,4 @@
-package com.easymart.Service.impl;
+package com.easymart.service.impl;
 
 import com.easymart.domain.USER_ROLE;
 import com.easymart.model.Seller;

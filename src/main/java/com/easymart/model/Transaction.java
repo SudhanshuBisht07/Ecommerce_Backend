@@ -25,5 +25,9 @@ public class Transaction {
     @ManyToOne
     private Seller seller;
 
-    private LocalDateTime date= LocalDateTime.now();
+    private LocalDateTime date;
+    @PrePersist
+    public void prePersist() {
+        if (date == null) date = LocalDateTime.now();
+    }
 }

@@ -3,6 +3,8 @@ package com.easymart.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -18,6 +20,7 @@ public class VerificationCode {
 
     private String otp;
     private String email;
+    private LocalDateTime expiresAt;
 
     @OneToOne
     private User user;

@@ -1,7 +1,7 @@
-package com.easymart.Service.impl;
+package com.easymart.service.impl;
 
-import com.easymart.Service.AuthService;
-import com.easymart.Service.EmailService;
+import com.easymart.service.AuthService;
+import com.easymart.service.EmailService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.USER_ROLE;
 import com.easymart.model.Cart;
@@ -16,7 +16,6 @@ import com.easymart.request.LoginRequest;
 import com.easymart.response.AuthResponse;
 import com.easymart.response.SignupRequest;
 import com.easymart.utils.OtpUtil;
-import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,11 +24,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -75,6 +73,7 @@ public class AuthServiceImpl implements AuthService {
         VerificationCode verificationCode=new VerificationCode();
         verificationCode.setOtp(otp);
         verificationCode.setEmail(email);
+        verificationCode.setExpiresAt(LocalDateTime.now().plusMinutes(10));
         verificationCodeRepository.save(verificationCode);
 
         String subject="EasyMart login/signup otp";
@@ -96,7 +95,7 @@ public class AuthServiceImpl implements AuthService {
             createdUser.setEmail(req.getEmail());
             createdUser.setFullName(req.getFullName());
             createdUser.setRole(USER_ROLE.ROLE_CUSTOMER);
-            createdUser.setMobile("8989787890");
+            createdUser.setMobile(req.getMobile());
             createdUser.setPassword(passwordEncoder.encode(req.getOtp()));
 
             user=userRepository.save(createdUser);
@@ -141,6 +140,9 @@ public class AuthServiceImpl implements AuthService {
         VerificationCode verificationCode=verificationCodeRepository.findByEmail(username);
         if(verificationCode==null|| !verificationCode.getOtp().equals(otp)){
             throw new BadCredentialsException("wrong otp");
+        }
+        if(verificationCode.getExpiresAt().isBefore(LocalDateTime.now())){
+            throw new BadCredentialsException("otp has expired");
         }
         return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
     }

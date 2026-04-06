@@ -1,6 +1,6 @@
-package com.easymart.Service.impl;
+package com.easymart.service.impl;
 
-import com.easymart.Service.SellerService;
+import com.easymart.service.SellerService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.AccountStatus;
 import com.easymart.domain.USER_ROLE;
@@ -28,7 +28,10 @@ public class SellerServiceImpl implements SellerService {
 
     @Override
     public Seller getSellerProfile(String jwt) throws SellerException {
-        String email=jwtProvider.getEmailFromJwtToken(jwt);
+        String email = jwtProvider.getEmailFromJwtToken(jwt);
+        if(email.startsWith("seller_")) {
+            email = email.substring("seller_".length());
+        }
         return this.getSellerByEmail(email);
     }
 
@@ -69,7 +72,10 @@ public class SellerServiceImpl implements SellerService {
 
     @Override
     public List<Seller> getAllSellers(AccountStatus status) {
-        return sellerRepository.findByAccountStatus(status);
+        if (status != null) {
+            return sellerRepository.findByAccountStatus(status);
+        }
+        return sellerRepository.findAll();
     }
 
     @Override

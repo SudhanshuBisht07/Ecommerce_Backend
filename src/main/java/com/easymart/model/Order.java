@@ -5,6 +5,7 @@ import com.easymart.domain.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,9 +39,9 @@ public class Order {
 
     private double totalMrpPrice;
 
-    private Integer totalSellingPrice;
+    private BigDecimal totalSellingPrice;
 
-    private Integer discount;
+    private BigDecimal discount;
 
     private OrderStatus orderStatus;
 
@@ -48,6 +49,11 @@ public class Order {
 
     private PaymentStatus paymentStatus =PaymentStatus.PENDING;
 
-    private LocalDateTime orderDate= LocalDateTime.now();
-    private LocalDateTime deliverDate=orderDate.plusDays(7);
+    private LocalDateTime orderDate;
+    private LocalDateTime deliverDate;
+    @PrePersist
+    public void prePersist() {
+        if (orderDate == null) orderDate = LocalDateTime.now();
+        deliverDate = orderDate.plusDays(7);
+    }
 }

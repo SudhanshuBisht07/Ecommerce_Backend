@@ -1,10 +1,7 @@
 package com.easymart.controller;
 
-import com.easymart.Service.AuthService;
+import com.easymart.service.AuthService;
 import com.easymart.domain.USER_ROLE;
-import com.easymart.model.User;
-import com.easymart.model.VerificationCode;
-import com.easymart.repository.UserRepository;
 import com.easymart.request.LoginOtpRequest;
 import com.easymart.request.LoginRequest;
 import com.easymart.response.ApiResponse;
@@ -21,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
-    private final UserRepository userRepository;
     private final AuthService authService;
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> createUserHandler(@RequestBody SignupRequest req) throws Exception {
@@ -39,7 +35,7 @@ public class AuthController {
         res.setMessage("otp sent successfully");
         return ResponseEntity.ok(res);
     }
-    @PostMapping("/signing")
+    @PostMapping("/signin")
     public ResponseEntity<AuthResponse> loginHandler(@RequestBody LoginRequest req) throws Exception {
         AuthResponse authResponse=authService.signing(req);
         return ResponseEntity.ok(authResponse);
