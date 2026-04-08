@@ -28,6 +28,8 @@ public class AppConfig {
                         .requestMatchers("/sellers/profile").authenticated()
                         .requestMatchers("/sellers/**").permitAll()
                         .requestMatchers("/users/**").authenticated()
+                        .requestMatchers("/api/cart/**").authenticated()
+                        .requestMatchers("/api/sellers/**").authenticated()
                         .anyRequest().permitAll()
                 ).addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
                 .csrf(csrf->csrf.disable())

@@ -36,21 +36,29 @@ public class SellerProductController {
         return new ResponseEntity<>(product, HttpStatus.CREATED);
     }
     @DeleteMapping("/{productId}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long productId){
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long productId, @RequestHeader("Authorization") String jwt){
         try{
+            sellerService.getSellerProfile(jwt);
             productService.deleteProduct(productId);
             return new ResponseEntity<>(HttpStatus.OK);
         } catch (ProductException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+        catch (SellerException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
     }
     @PutMapping("/{productId}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long productId, @RequestBody Product product){
+    public ResponseEntity<Product> updateProduct(@PathVariable Long productId, @RequestBody Product product,@RequestHeader("Authorization") String jwt){
         try{
+            sellerService.getSellerProfile(jwt);
             Product updatedProduct=productService.updateProduct(productId, product);
             return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
         }catch(ProductException e){
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+         catch (SellerException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 

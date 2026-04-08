@@ -24,7 +24,7 @@ public class Review {
     @Column(nullable = false)
     private double rating;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     private List<String> productImages;
 
     @JsonIgnore

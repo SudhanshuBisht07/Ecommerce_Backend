@@ -46,23 +46,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sentLoginOtp(String email, USER_ROLE role) throws Exception {
-        String SIGNING_PREFIX="signing_";
-        String SELLER_PREFIX="seller_";
-        if(email.startsWith(SIGNING_PREFIX)){
-            email=email.substring(SIGNING_PREFIX.length());
-
-            if(role.equals(USER_ROLE.ROLE_SELLER)) {
-                Seller seller =sellerRepository.findByEmail(email);
-                if(seller==null){
-                    throw new Exception("seller not found..");
-                }
+        if (role.equals(USER_ROLE.ROLE_SELLER)) {
+            Seller seller = sellerRepository.findByEmail(email);
+            if (seller == null) {
+                throw new Exception("seller not found..");
             }
-            else{
-                User user = userRepository.findByEmail(email);
-                if (user == null) {
-                    throw new Exception("user not exist with provided email");
-                }
-
+        } else {
+            User user = userRepository.findByEmail(email);
+            if (user == null) {
+                throw new Exception("user not exist with provided email");
             }
         }
         VerificationCode exists=verificationCodeRepository.findByEmail(email);

@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -20,8 +22,8 @@ public class Cart {
     @OneToOne
     private User user;
 
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<CartItem> cartItems = new HashSet<>();
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true, fetch=FetchType.EAGER)
+    private List<CartItem> cartItems = new ArrayList<>();
 
     private BigDecimal totalSellingPrice;
     private int totalItems;
