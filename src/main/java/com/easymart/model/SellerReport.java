@@ -3,6 +3,8 @@ package com.easymart.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -18,11 +20,11 @@ public class SellerReport {
     @OneToOne
     private Seller seller;
 
-    private Long totalEarnings=0L;
-    private Long totalSales=0L;
-    private Long totalRefunds=0L;
-    private Long totalTax=0L;
-    private Long netEarnings=0L;
+    private BigDecimal totalEarnings = BigDecimal.ZERO;
+    private BigDecimal totalSales = BigDecimal.ZERO;
+    private BigDecimal totalRefunds = BigDecimal.ZERO;
+    private BigDecimal totalTax = BigDecimal.ZERO;
+    private BigDecimal netEarnings = BigDecimal.ZERO;
     private Integer totalOrders=0;
     private Integer cancelledOrders=0;
     private Integer totalTransactions=0;

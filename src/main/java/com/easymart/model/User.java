@@ -34,7 +34,7 @@ public class User {
 
     @OneToMany(fetch = FetchType.EAGER)
     private Set<Address> addresses = new HashSet<>();
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JsonIgnore //this data will not be used by frontend
     private Set<Coupon> usedCoupons = new HashSet<>();
 }

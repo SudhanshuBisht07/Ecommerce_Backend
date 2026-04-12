@@ -1,5 +1,7 @@
 package com.easymart.service.impl;
 
+import com.easymart.model.VerificationCode;
+import com.easymart.repository.VerificationCodeRepository;
 import com.easymart.service.SellerService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.AccountStatus;
@@ -14,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 @Service
 @RequiredArgsConstructor
@@ -23,7 +26,7 @@ public class SellerServiceImpl implements SellerService {
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
     private final AddressRepository addressRepository;
-
+    private final VerificationCodeRepository verificationCodeRepository;
 
 
     @Override
@@ -135,7 +138,15 @@ public class SellerServiceImpl implements SellerService {
     @Override
     public Seller verifyEmail(String email, String otp) throws SellerException {
         Seller seller=getSellerByEmail(email);
+        VerificationCode verificationCode = verificationCodeRepository.findByEmail(email);
+        if(verificationCode == null || !verificationCode.getOtp().equals(otp)){
+            throw new SellerException("Invalid OTP");
+        }
+        if(verificationCode.getExpiresAt().isBefore(LocalDateTime.now())){
+            throw new SellerException("OTP has expired");
+        }
         seller.setEmailVerified(true);
+        verificationCodeRepository.delete(verificationCode); // clean up after use
         return sellerRepository.save(seller);
     }
 

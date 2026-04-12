@@ -24,7 +24,7 @@ public class Product {
     private String brand;
     private BigDecimal mrpPrice;
     private BigDecimal sellingPrice;
-    private double discountPercent;
+    private int discountPercent;
     private int quantity;
     private String color;
 

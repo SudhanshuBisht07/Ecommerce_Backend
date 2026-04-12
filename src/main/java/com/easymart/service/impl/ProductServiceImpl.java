@@ -56,7 +56,6 @@ public class ProductServiceImpl implements ProductService {
             category.setParentCategory(category2);
             category3=categoryRepository.save(category);
         }
-        int discountPercentage=calculateDiscountPercentage(req.getMrpPrice(), req.getSellingPrice());
         Product product= new Product();
         product.setSeller(seller);
         product.setCategory(category3);
@@ -65,10 +64,11 @@ public class ProductServiceImpl implements ProductService {
         product.setCreatedAt(LocalDateTime.now());
         product.setTitle(req.getTitle());
         product.setColor(req.getColor());
-        product.setSellingPrice(BigDecimal.valueOf(req.getSellingPrice()));
         product.setImages(req.getImages());
-        product.setMrpPrice(BigDecimal.valueOf(req.getMrpPrice()));
         product.setSize(req.getSize());
+        product.setSellingPrice(req.getSellingPrice());
+        product.setMrpPrice(req.getMrpPrice());
+        int discountPercentage=calculateDiscountPercentage(req.getMrpPrice().intValue(), req.getSellingPrice().intValue());
         product.setDiscountPercent(discountPercentage);
         return productRepository.save(product);
     }
@@ -136,7 +136,13 @@ public class ProductServiceImpl implements ProductService {
 
             if(category!=null){
                 Join<Product, Category> categoryJoin=root.join("category");
-                predicates.add(criteriaBuilder.equal(categoryJoin.get("categoryId"),category));
+                Join<Category, Category> parent2Join=categoryJoin.join("parentCategory", jakarta.persistence.criteria.JoinType.LEFT);
+                Join<Category, Category> parent1Join=parent2Join.join("parentCategory", jakarta.persistence.criteria.JoinType.LEFT);
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.equal(categoryJoin.get("categoryId"), category),
+                        criteriaBuilder.equal(parent2Join.get("categoryId"), category),
+                        criteriaBuilder.equal(parent1Join.get("categoryId"), category)
+                ));
             }
             if(brand!=null&& !brand.isEmpty()){
                 predicates.add(criteriaBuilder.equal(root.get("brand"),brand));

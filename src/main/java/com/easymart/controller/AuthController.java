@@ -6,7 +6,7 @@ import com.easymart.request.LoginOtpRequest;
 import com.easymart.request.LoginRequest;
 import com.easymart.response.ApiResponse;
 import com.easymart.response.AuthResponse;
-import com.easymart.response.SignupRequest;
+import com.easymart.request.SignupRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

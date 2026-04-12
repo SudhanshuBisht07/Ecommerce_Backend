@@ -5,6 +5,7 @@ import com.easymart.domain.PaymentOrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -20,7 +21,7 @@ public class PaymentOrder {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    private Long amount;
+    private BigDecimal amount;
 
     private PaymentOrderStatus status= PaymentOrderStatus.PENDING;
 
@@ -30,6 +31,6 @@ public class PaymentOrder {
     @ManyToOne
     private User user;
 
-    @OneToMany
+    @OneToMany(fetch = FetchType.EAGER)
     private Set<Order> orders = new HashSet<>();
 }

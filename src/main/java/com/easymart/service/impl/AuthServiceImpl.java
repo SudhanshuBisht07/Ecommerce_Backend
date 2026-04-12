@@ -14,7 +14,7 @@ import com.easymart.repository.UserRepository;
 import com.easymart.repository.VerificationCodeRepository;
 import com.easymart.request.LoginRequest;
 import com.easymart.response.AuthResponse;
-import com.easymart.response.SignupRequest;
+import com.easymart.request.SignupRequest;
 import com.easymart.utils.OtpUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -121,21 +121,22 @@ public class AuthServiceImpl implements AuthService {
         return authResponse;
     }
     private Authentication authenticate(String username, String otp){
-        UserDetails userDetails=customUserService.loadUserByUsername(username);
         String SELLER_PREFIX="seller_";
-        if(username.startsWith(SELLER_PREFIX)){
-            username=username.substring(SELLER_PREFIX.length());
-        }
+        String emailForOtpLookup = username.startsWith(SELLER_PREFIX)
+                ? username.substring(SELLER_PREFIX.length())
+                : username;
+        UserDetails userDetails=customUserService.loadUserByUsername(username);
         if(userDetails==null){
             throw new BadCredentialsException("invalid username or password");
         }
-        VerificationCode verificationCode=verificationCodeRepository.findByEmail(username);
+        VerificationCode verificationCode=verificationCodeRepository.findByEmail(emailForOtpLookup);
         if(verificationCode==null|| !verificationCode.getOtp().equals(otp)){
             throw new BadCredentialsException("wrong otp");
         }
         if(verificationCode.getExpiresAt().isBefore(LocalDateTime.now())){
             throw new BadCredentialsException("otp has expired");
         }
+        verificationCodeRepository.delete(verificationCode);
         return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
     }
 }

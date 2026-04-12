@@ -1,4 +1,4 @@
-package com.easymart.response;
+package com.easymart.request;
 
 import lombok.Data;
 

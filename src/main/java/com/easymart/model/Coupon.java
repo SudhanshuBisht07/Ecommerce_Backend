@@ -20,7 +20,7 @@ public class Coupon {
     private Long id;
 
     private String code;
-    private double discountPercentage;
+    private BigDecimal discountPercentage;
     private LocalDate validityStartDate;
     private LocalDate validityEndDate;
     private BigDecimal minimumOrderValue;

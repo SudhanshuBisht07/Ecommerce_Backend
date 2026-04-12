@@ -3,7 +3,7 @@ package com.easymart.service;
 import com.easymart.domain.USER_ROLE;
 import com.easymart.request.LoginRequest;
 import com.easymart.response.AuthResponse;
-import com.easymart.response.SignupRequest;
+import com.easymart.request.SignupRequest;
 
 public interface AuthService {
 

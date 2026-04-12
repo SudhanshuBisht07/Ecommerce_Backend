@@ -52,12 +52,12 @@ public class CartController {
         return new ResponseEntity<>(res, HttpStatus.ACCEPTED);
     }
     @PutMapping("/item/{cartItemId}")
-    public ResponseEntity<CartItem> updateCartItemHandler(@PathVariable Long cartItemId, @RequestBody CartItem cartItem, @RequestHeader("Authorization")String jwt) throws Exception {
-        User user=userService.findUserByJwtToken(jwt);
-        CartItem updateCartItem=null;
-        if(cartItem.getQuantity()>0){
-            updateCartItem=cartItemService.updateCartItem(user.getId(), cartItemId, cartItem);
+    public ResponseEntity<?> updateCartItemHandler(@PathVariable Long cartItemId, @RequestBody CartItem cartItem, @RequestHeader("Authorization")String jwt) throws Exception {
+        if(cartItem.getQuantity() <= 0){
+            return new ResponseEntity<>("Quantity must be greater than 0", HttpStatus.BAD_REQUEST);
         }
+        User user=userService.findUserByJwtToken(jwt);
+        CartItem updateCartItem=cartItemService.updateCartItem(user.getId(), cartItemId, cartItem);
         return new ResponseEntity<>(updateCartItem, HttpStatus.ACCEPTED);
     }
 }

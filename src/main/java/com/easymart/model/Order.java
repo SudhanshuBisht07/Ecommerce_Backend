@@ -28,7 +28,7 @@ public class Order {
 
     private Long sellerId;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.EAGER)
     private List<OrderItem> orderItems = new ArrayList<>();
 
     @ManyToOne
@@ -37,7 +37,7 @@ public class Order {
     @Embedded
     private PaymentDetails paymentDetails=new PaymentDetails();
 
-    private double totalMrpPrice;
+    private BigDecimal totalMrpPrice;
 
     private BigDecimal totalSellingPrice;
 
@@ -55,5 +55,6 @@ public class Order {
     public void prePersist() {
         if (orderDate == null) orderDate = LocalDateTime.now();
         deliverDate = orderDate.plusDays(7);
+        if (orderId == null) orderId = "ORD-" + System.currentTimeMillis();
     }
 }

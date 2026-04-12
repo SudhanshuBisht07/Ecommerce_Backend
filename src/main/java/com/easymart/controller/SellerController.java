@@ -1,7 +1,9 @@
 package com.easymart.controller;
 
+import com.easymart.model.SellerReport;
 import com.easymart.service.AuthService;
 import com.easymart.service.EmailService;
+import com.easymart.service.SellerReportService;
 import com.easymart.service.SellerService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.AccountStatus;
@@ -28,13 +30,11 @@ public class SellerController {
     private final VerificationCodeRepository verificationCodeRepository;
     private final SellerService sellerService;
     private final EmailService emailService;
-    private final JwtProvider jwtProvider;
+    private final SellerReportService sellerReportService;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> loginSeller(@RequestBody LoginRequest req) throws Exception {
-        String otp = req.getOtp();
-        String email = req.getEmail();
-        req.setEmail("seller_" + email);
+        req.setEmail("seller_" + req.getEmail());
         AuthResponse authResponse = authService.signing(req);
         return ResponseEntity.ok(authResponse);
 
@@ -96,12 +96,11 @@ public class SellerController {
         Seller updatedSeller = sellerService.updateSellerAccountStatus(id, status);
         return ResponseEntity.ok(updatedSeller);
     }
-//    @GetMapping("/report")
-//    public ResponseEntity<SellerReport> getSellerReport(@RequestHeader("Authorization")String jwt)throws Exception{
-//        String email=jwtProvider.getEmailFromJwtToken(jwt);
-//        Seller seller=sellerService.getSellerByEmail(email);
-//        SellerReport report=sellerReportService.getSellerReport(seller);
-//        return new ResponseEntity<>(report, HttpStatus.OK);
-//    }
+    @GetMapping("/report")
+    public ResponseEntity<SellerReport> getSellerReport(@RequestHeader("Authorization")String jwt)throws Exception{
+        Seller seller=sellerService.getSellerProfile(jwt);
+        SellerReport report=sellerReportService.getSellerReport(seller);
+        return new ResponseEntity<>(report, HttpStatus.OK);
+    }
 
 }
