@@ -7,6 +7,8 @@ import com.easymart.service.SellerReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 public class SellerReportServiceImpl implements SellerReportService {
@@ -15,14 +17,19 @@ public class SellerReportServiceImpl implements SellerReportService {
 
     @Override
     public SellerReport getSellerReport(Seller seller) {
-        SellerReport sellerReport=sellerReportRepository.findBySeller_Id(seller.getId());
+        SellerReport report=sellerReportRepository.findBySeller_Id(seller.getId());
 
-        if(sellerReport==null){
-            SellerReport newReport=new SellerReport();
-            newReport.setSeller(seller);
-            return sellerReportRepository.save(newReport);
+        if(report==null){
+            report=new SellerReport();
+            report.setSeller(seller);
+            report.setTotalOrders(0);
+            report.setTotalSales(BigDecimal.ZERO);
+            report.setTotalEarnings(BigDecimal.ZERO);
+            report.setTotalRefunds(BigDecimal.ZERO);
+            report.setCancelledOrders(0);
+            return sellerReportRepository.save(report);
         }
-        return sellerReport;
+        return report;
     }
 
     @Override

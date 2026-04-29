@@ -1,5 +1,6 @@
 package com.easymart.config;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,6 +19,9 @@ import java.util.Collections;
 @Configuration
 @EnableWebSecurity
 public class AppConfig {
+    @Value("${cors.allowed-origins:http://localhost:3000}")
+    private String allowedOrigins;
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http)throws Exception{
         http.sessionManagement(management->management.sessionCreationPolicy(
@@ -36,6 +40,8 @@ public class AppConfig {
                         .requestMatchers("/api/payment/**").authenticated()
                         .requestMatchers("/api/seller/orders/**").authenticated()
                         .requestMatchers("/api/transactions/**").authenticated()
+                        .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/home/categories").authenticated()
                         .anyRequest().permitAll()
                 ).addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
                 .csrf(csrf->csrf.disable())
@@ -47,7 +53,7 @@ public class AppConfig {
             @Override
             public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                 CorsConfiguration cfg=new CorsConfiguration();
-                cfg.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
+                cfg.setAllowedOrigins(Collections.singletonList(allowedOrigins));
                 cfg.setAllowedMethods(Collections.singletonList("*"));
                 cfg.setAllowedHeaders(Collections.singletonList("*"));
                 cfg.setAllowCredentials(true);

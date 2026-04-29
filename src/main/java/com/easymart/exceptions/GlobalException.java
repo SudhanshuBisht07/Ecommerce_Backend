@@ -18,6 +18,18 @@ public class GlobalException {
         errorDetails.setTimestamp(LocalDateTime.now());
         return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);
     }
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorDetails> handleIllegalArgumentException(
+            IllegalArgumentException ex,
+            WebRequest request) {
+
+        ErrorDetails errorDetails = new ErrorDetails();
+        errorDetails.setError(ex.getMessage());
+        errorDetails.setDetails(request.getDescription(false));
+        errorDetails.setTimestamp(LocalDateTime.now());
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);  // 400, not 500
+    }
     @ExceptionHandler(ProductException.class)
     public ResponseEntity<ErrorDetails> productExceptionHandler(ProductException pe, WebRequest request){
         ErrorDetails errorDetails=new ErrorDetails();

@@ -84,6 +84,11 @@ public class OrderServiceImpl implements OrderService {
         }
         cartItemRepository.deleteAll(new ArrayList<>(cart.getCartItems()));
         cart.getCartItems().clear();
+        cart.setDiscount(BigDecimal.ZERO);
+        cart.setCouponCode(null);
+        cart.setTotalMrpPrice(BigDecimal.ZERO);
+        cart.setTotalSellingPrice(BigDecimal.ZERO);
+        cart.setTotalItems(0);
         cartRepository.save(cart);
         return orders;
     }

@@ -32,9 +32,16 @@ public class User {
 
     private USER_ROLE role=USER_ROLE.ROLE_CUSTOMER;
 
-    @OneToMany(fetch = FetchType.EAGER)
+    @OneToMany(fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true)
+    @JoinColumn(name = "user_id")
     private Set<Address> addresses = new HashSet<>();
+
     @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "user_used_coupons",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "coupon_id"))
     @JsonIgnore //this data will not be used by frontend
     private Set<Coupon> usedCoupons = new HashSet<>();
 }

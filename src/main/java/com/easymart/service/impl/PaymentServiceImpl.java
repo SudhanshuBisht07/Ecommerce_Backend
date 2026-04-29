@@ -63,10 +63,10 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public Boolean proceedPaymentOrder(PaymentOrder paymentOrder, String paymentId, String paymentLinkId) throws RazorpayException {
         if(paymentOrder.getStatus().equals(PaymentOrderStatus.PENDING)){
-//            RazorpayClient razorpayClient=new RazorpayClient(apiKey, apiSecret);
-//            Payment payment=razorpayClient.payments.fetch(paymentId);
-//            String status=payment.get("status");
-//            if(status.equals("captured")) {
+            RazorpayClient razorpayClient=new RazorpayClient(apiKey, apiSecret);
+            Payment payment=razorpayClient.payments.fetch(paymentId);
+            String status=payment.get("status");
+            if(status.equals("captured")) {
                 Set<Order> orders=paymentOrder.getOrders();
                 for(Order order:orders){
                     order.setPaymentStatus(PaymentStatus.COMPLETED);
@@ -75,10 +75,10 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentOrder.setStatus(PaymentOrderStatus.SUCCESS);
                 paymentOrderRepository.save(paymentOrder);
                 return true;
-//            }
-//            paymentOrder.setStatus(PaymentOrderStatus.FAILED);
-//            paymentOrderRepository.save(paymentOrder);
-//            return false;
+            }
+            paymentOrder.setStatus(PaymentOrderStatus.FAILED);
+            paymentOrderRepository.save(paymentOrder);
+            return false;
         }
         return false;
     }

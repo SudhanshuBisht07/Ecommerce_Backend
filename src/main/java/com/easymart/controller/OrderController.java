@@ -7,6 +7,7 @@ import com.razorpay.PaymentLink;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,14 +41,13 @@ public class OrderController {
 
         PaymentLinkResponse paymentLinkResponse=new PaymentLinkResponse();
 
-//        PaymentLink payment=paymentService.createRazorpayPaymentLink(user,
-//                    paymentOrder.getAmount().longValue(), paymentOrder.getId());
-//        String paymentUrl=payment.get("short_url");
-//        String paymentUrlId=payment.get("id");
-//        paymentLinkResponse.setPayment_link_url(paymentUrl);
-//        paymentOrder.setPaymentLinkId(paymentUrlId);
-//        paymentService.updatePaymentOrder(paymentOrder);
-        paymentLinkResponse.setPayment_link_url("http://localhost:3000/payment-success/" + paymentOrder.getId());
+        PaymentLink payment=paymentService.createRazorpayPaymentLink(user,
+                    paymentOrder.getAmount().longValue(), paymentOrder.getId());
+        String paymentUrl=payment.get("short_url");
+        String paymentUrlId=payment.get("id");
+        paymentLinkResponse.setPayment_link_url(paymentUrl);
+        paymentOrder.setPaymentLinkId(paymentUrlId);
+        paymentService.updatePaymentOrder(paymentOrder);
         return new ResponseEntity<>(paymentLinkResponse, HttpStatus.OK);
     }
 
@@ -83,7 +83,7 @@ public class OrderController {
         }
         return new ResponseEntity<>(orderItem, HttpStatus.ACCEPTED);
     }
-
+    @Transactional
     @PutMapping("/{orderId}/cancel")
     public ResponseEntity<Order> cancelOrder(
             @PathVariable Long orderId,

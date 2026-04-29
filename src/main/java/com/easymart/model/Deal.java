@@ -3,6 +3,8 @@ package com.easymart.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -15,7 +17,7 @@ public class Deal {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    private Integer discount;
+    private BigDecimal discount;
 
     @OneToOne
     private HomeCategory category;

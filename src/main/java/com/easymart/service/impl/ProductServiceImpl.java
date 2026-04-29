@@ -161,7 +161,7 @@ public class ProductServiceImpl implements ProductService {
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("sellingPrice"),BigDecimal.valueOf(maxPrice)));
             }
             if(minDiscount!=null){
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("discountPercent"),(double) minDiscount));
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("discountPercent"), minDiscount));
             }
             if(stock != null) {
                 if (stock.equals("in_stock"))
@@ -193,6 +193,6 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> getProductBySellerId(Long sellerId) {
-        return productRepository.findBySellerId(sellerId);
+        return productRepository.findBySeller_Id(sellerId);
     }
 }

@@ -25,6 +25,12 @@ public class CartServiceImpl implements CartService {
         CartItem isPresent=cartItemRepository.findByCartAndProductAndSize(cart, product, size);
         if(isPresent==null){
             CartItem cartItem=new CartItem();
+            if (product.getSellingPrice() == null) {
+                throw new IllegalArgumentException("Product selling price is not set for product id: " + product.getId());
+            }
+            if (product.getMrpPrice() == null) {
+                throw new IllegalArgumentException("Product MRP price is not set for product id: " + product.getId());
+            }
             cartItem.setProduct(product);
             cartItem.setQuantity(quantity);
             cartItem.setUserId(user.getId());

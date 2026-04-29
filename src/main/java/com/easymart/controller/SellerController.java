@@ -2,10 +2,9 @@ package com.easymart.controller;
 
 import com.easymart.model.SellerReport;
 import com.easymart.service.AuthService;
-import com.easymart.service.EmailService;
+import com.easymart.service.impl.EmailServiceImpl;
 import com.easymart.service.SellerReportService;
 import com.easymart.service.SellerService;
-import com.easymart.config.JwtProvider;
 import com.easymart.domain.AccountStatus;
 import com.easymart.exceptions.SellerException;
 import com.easymart.model.Seller;
@@ -29,7 +28,7 @@ public class SellerController {
     private final AuthService authService;
     private final VerificationCodeRepository verificationCodeRepository;
     private final SellerService sellerService;
-    private final EmailService emailService;
+    private final EmailServiceImpl emailService;
     private final SellerReportService sellerReportService;
 
     @PostMapping("/login")

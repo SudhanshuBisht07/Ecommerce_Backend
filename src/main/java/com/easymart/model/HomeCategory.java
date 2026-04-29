@@ -7,6 +7,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -23,4 +25,5 @@ public class HomeCategory {
     private String image;
     private String categoryId;
     private HomeCategorySection section;
+    private BigDecimal discountPercentage;
 }

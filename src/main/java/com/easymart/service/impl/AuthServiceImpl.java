@@ -1,7 +1,7 @@
 package com.easymart.service.impl;
 
+import com.easymart.domain.AccountStatus;
 import com.easymart.service.AuthService;
-import com.easymart.service.EmailService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.USER_ROLE;
 import com.easymart.model.Cart;
@@ -40,7 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final CartRepository cartRepository;
     private final JwtProvider jwtProvider;
     private final VerificationCodeRepository verificationCodeRepository;
-    private final EmailService emailService;
+    private final EmailServiceImpl emailService;
     private final CustomUserServiceImpl customUserService;
     private final SellerRepository sellerRepository;
 
@@ -80,7 +80,9 @@ public class AuthServiceImpl implements AuthService {
         if(verificationCode==null|| !verificationCode.getOtp().equals(req.getOtp())){
             throw new Exception("wrong otp...");
         }
-
+        if (verificationCode.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new Exception("OTP has expired");
+        }
         User user=userRepository.findByEmail(req.getEmail());
         if(user==null){
             User createdUser=new User();
@@ -128,6 +130,12 @@ public class AuthServiceImpl implements AuthService {
         UserDetails userDetails=customUserService.loadUserByUsername(username);
         if(userDetails==null){
             throw new BadCredentialsException("invalid username or password");
+        }
+        if (username.startsWith(SELLER_PREFIX)) {
+            Seller seller = sellerRepository.findByEmail(emailForOtpLookup);
+            if (seller != null && seller.getAccountStatus() != AccountStatus.ACTIVE) {
+                throw new BadCredentialsException("Seller account is not active");
+            }
         }
         VerificationCode verificationCode=verificationCodeRepository.findByEmail(emailForOtpLookup);
         if(verificationCode==null|| !verificationCode.getOtp().equals(otp)){
