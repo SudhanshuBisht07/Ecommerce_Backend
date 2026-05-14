@@ -3,6 +3,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,6 +19,7 @@ import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class AppConfig {
     @Value("${cors.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
@@ -40,8 +42,13 @@ public class AppConfig {
                         .requestMatchers("/api/payment/**").authenticated()
                         .requestMatchers("/api/seller/orders/**").authenticated()
                         .requestMatchers("/api/transactions/**").authenticated()
+                        .requestMatchers("/api/seller/*/status/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers("/home/categories").authenticated()
+                        .requestMatchers("/api/coupons/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/home/categories").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/home/categories").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/wishlist/**").authenticated()
+                        .requestMatchers("/api/coupons/apply").authenticated()
                         .anyRequest().permitAll()
                 ).addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
                 .csrf(csrf->csrf.disable())

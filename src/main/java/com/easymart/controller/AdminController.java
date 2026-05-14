@@ -16,11 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
     private final SellerService sellerService;
 
-    @PatchMapping("/seller/{id}/status/{status}")
+    @PatchMapping("/seller/{id}/status/{accountStatus}")
     public ResponseEntity<Seller> updateSellerStatus(
             @PathVariable Long id,
-            @PathVariable AccountStatus status)throws Exception{
-        Seller updatedSeller=sellerService.updateSellerAccountStatus(id, status);
+            @PathVariable AccountStatus accountStatus)throws Exception{
+        Seller updatedSeller=sellerService.updateSellerAccountStatus(id, accountStatus);
         return ResponseEntity.ok(updatedSeller);
     }
 }

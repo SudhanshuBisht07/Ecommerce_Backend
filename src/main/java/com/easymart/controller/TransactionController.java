@@ -6,6 +6,7 @@ import com.easymart.service.SellerService;
 import com.easymart.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,6 +29,7 @@ public class TransactionController {
         List<Transaction> transactions=transactionService.getTransactionBySellerId(seller);
         return ResponseEntity.ok(transactions);
     }
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @GetMapping
     public ResponseEntity<List<Transaction>> getAllTransactions(){
         List<Transaction> transactions=transactionService.getAllTransactions();

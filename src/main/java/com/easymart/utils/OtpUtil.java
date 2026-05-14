@@ -1,7 +1,6 @@
 package com.easymart.utils;
 
 import java.security.SecureRandom;
-import java.util.Random;
 
 public class OtpUtil {
     public static String generateOtp(){

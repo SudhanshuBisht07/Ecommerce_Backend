@@ -23,30 +23,47 @@ public class CartServiceImpl implements CartService {
     public CartItem addCartItem(User user, Product product, String size, int quantity) {
         Cart cart=findUserCart(user);
         CartItem isPresent=cartItemRepository.findByCartAndProductAndSize(cart, product, size);
-        if(isPresent==null){
-            CartItem cartItem=new CartItem();
-            if (product.getSellingPrice() == null) {
-                throw new IllegalArgumentException("Product selling price is not set for product id: " + product.getId());
+
+        if(isPresent!=null){
+            int newQty = isPresent.getQuantity() + quantity;
+            if (product.getQuantity() < newQty) {
+                throw new IllegalArgumentException("Only " + product.getQuantity()
+                        + " units available for: " + product.getTitle());
             }
-            if (product.getMrpPrice() == null) {
-                throw new IllegalArgumentException("Product MRP price is not set for product id: " + product.getId());
-            }
-            cartItem.setProduct(product);
-            cartItem.setQuantity(quantity);
-            cartItem.setUserId(user.getId());
-            cartItem.setSize(size);
-            BigDecimal totalPrice = product.getSellingPrice().multiply(BigDecimal.valueOf(quantity));
-            cartItem.setSellingPrice(totalPrice);
-            cartItem.setMrpPrice(product.getMrpPrice().multiply(BigDecimal.valueOf(quantity)));
-            cartItem.setCart(cart);
-            return cartItemRepository.save(cartItem);
+            isPresent.setQuantity(newQty);
+            isPresent.setSellingPrice(product.getSellingPrice().multiply(BigDecimal.valueOf(newQty)));
+            isPresent.setMrpPrice(product.getMrpPrice().multiply(BigDecimal.valueOf(newQty)));
+            return cartItemRepository.save(isPresent);
         }
-        return isPresent;
+        CartItem cartItem=new CartItem();
+        if (product.getSellingPrice() == null) {
+            throw new IllegalArgumentException("Product selling price is not set for product id: " + product.getId());
+        }
+        if (product.getMrpPrice() == null) {
+            throw new IllegalArgumentException("Product MRP price is not set for product id: " + product.getId());
+        }
+        if (product.getQuantity() < quantity) {
+            throw new IllegalArgumentException("Only " + product.getQuantity()
+                    + " units available for: " + product.getTitle());
+        }
+        cartItem.setProduct(product);
+        cartItem.setQuantity(quantity);
+        cartItem.setUserId(user.getId());
+        cartItem.setSize(size);
+        cartItem.setSellingPrice(product.getSellingPrice().multiply(BigDecimal.valueOf(quantity)));
+        cartItem.setMrpPrice(product.getMrpPrice().multiply(BigDecimal.valueOf(quantity)));
+        cartItem.setCart(cart);
+        return cartItemRepository.save(cartItem);
     }
 
     @Override
     public Cart findUserCart(User user) {
         Cart cart = cartRepository.findByUserId(user.getId());
+        if(cart == null){
+            cart = new Cart();
+            cart.setUser(user);
+            cart = cartRepository.save(cart);
+        }
         BigDecimal totalPrice = BigDecimal.ZERO;
         BigDecimal totalDiscountedPrice = BigDecimal.ZERO;
         int totalItem = 0;
@@ -55,26 +72,33 @@ public class CartServiceImpl implements CartService {
             totalDiscountedPrice = totalDiscountedPrice.add(cartItem.getSellingPrice());
             totalItem += cartItem.getQuantity();
         }
+        BigDecimal oldMrpPrice = cart.getTotalMrpPrice() != null ? cart.getTotalMrpPrice() : BigDecimal.ZERO;
+        BigDecimal oldSellingPrice = cart.getTotalSellingPrice() != null ? cart.getTotalSellingPrice() : BigDecimal.ZERO;
+        int oldTotalItems = cart.getTotalItems();
+
         cart.setTotalMrpPrice(totalPrice);
         cart.setTotalItems(totalItem);
-        cart.setTotalSellingPrice(totalDiscountedPrice);
-        cart.setDiscount(totalPrice.compareTo(BigDecimal.ZERO) == 0
+
+        BigDecimal calculatedDiscount = totalPrice.compareTo(BigDecimal.ZERO) == 0
                 ? BigDecimal.ZERO
-                : calculateDiscountPercentage(totalPrice, totalDiscountedPrice));
+                : totalPrice.subtract(totalDiscountedPrice);
+
+        if (cart.getCouponCode() != null && cart.getCouponDiscount() != null) {
+            cart.setTotalSellingPrice(totalDiscountedPrice.subtract(cart.getCouponDiscount()));
+            cart.setDiscount(calculatedDiscount.add(cart.getCouponDiscount()));
+        } else {
+            cart.setTotalSellingPrice(totalDiscountedPrice);
+            cart.setDiscount(calculatedDiscount);
+        }
+        boolean changed = !totalPrice.equals(oldMrpPrice)
+                || !cart.getTotalSellingPrice().equals(oldSellingPrice)
+                || totalItem != oldTotalItems;
+
+        if (changed) {
+            return cartRepository.save(cart);
+        }
         return cart;
     }
 
-    private BigDecimal calculateDiscountPercentage(BigDecimal mrpPrice, BigDecimal sellingPrice) {
-        if (mrpPrice.compareTo(BigDecimal.ZERO) == 0) {
-            throw new IllegalArgumentException("actual price must be greater than zero");
-        }
-        if (mrpPrice.compareTo(sellingPrice) < 0) {
-            throw new IllegalArgumentException("mrp price must be greater than selling price");
-        }
-        double mrp = mrpPrice.doubleValue();
-        double selling = sellingPrice.doubleValue();
-        double discount = ((mrp - selling) / mrp) * 100;
-        return BigDecimal.valueOf(discount);
-    }
 }
 

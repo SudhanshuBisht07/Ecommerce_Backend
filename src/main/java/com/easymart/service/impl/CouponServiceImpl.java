@@ -39,7 +39,9 @@ public class CouponServiceImpl implements CouponService {
         if(BigDecimal.valueOf(orderValue).compareTo(coupon.getMinimumOrderValue()) < 0)
             throw new Exception("order value is less than minimum order value: "+coupon.getMinimumOrderValue());
 
-        if(coupon.isActive()&& LocalDate.now().isAfter(coupon.getValidityStartDate())&& LocalDate.now().isBefore(coupon.getValidityEndDate())){
+        if(coupon.isActive()
+                && !LocalDate.now().isBefore(coupon.getValidityStartDate())
+                && !LocalDate.now().isAfter(coupon.getValidityEndDate())){
             user.getUsedCoupons().add(coupon);
             userRepository.save(user);
 
@@ -48,7 +50,10 @@ public class CouponServiceImpl implements CouponService {
                     .divide(BigDecimal.valueOf(100),2, RoundingMode.HALF_UP);
 
             cart.setTotalSellingPrice(cart.getTotalSellingPrice().subtract(discountedPrice));
-            cart.setDiscount(discountedPrice);
+            cart.setCouponDiscount(discountedPrice);
+            cart.setDiscount(cart.getDiscount() != null
+                    ? cart.getDiscount().add(discountedPrice)
+                    : discountedPrice);
             cart.setCouponCode(code);
             cartRepository.save(cart);
             return cart;
@@ -62,12 +67,15 @@ public class CouponServiceImpl implements CouponService {
         if(coupon==null)
             throw new Exception("coupon not valid");
         Cart cart=cartRepository.findByUserId(user.getId());
-        BigDecimal discountedPrice = cart.getTotalSellingPrice()
-                .multiply(coupon.getDiscountPercentage())
-                .divide(BigDecimal.valueOf(100),2, RoundingMode.HALF_UP);
-        cart.setTotalSellingPrice(cart.getTotalSellingPrice().add(discountedPrice));
+        BigDecimal couponDiscount = cart.getCouponDiscount() != null ? cart.getCouponDiscount() : BigDecimal.ZERO;
+        cart.setTotalSellingPrice(cart.getTotalSellingPrice().add(couponDiscount));
+        cart.setDiscount(cart.getDiscount() != null
+                ? cart.getDiscount().subtract(couponDiscount)
+                : BigDecimal.ZERO);
+        cart.setCouponDiscount(null);
         cart.setCouponCode(null);
-        cart.setDiscount(null);
+        user.getUsedCoupons().remove(coupon);
+        userRepository.save(user);
         return cartRepository.save(cart);
     }
 
@@ -77,7 +85,7 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
-    @PreAuthorize("hasRole('Admin')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public Coupon createCoupon(Coupon coupon) {
         return couponRepository.save(coupon);
     }
@@ -88,9 +96,14 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
-    @PreAuthorize("hasRole('Admin')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public void deleteCoupon(Long id) throws Exception {
-        findCouponById(id);
+        Coupon coupon=findCouponById(id);
+        List<User> usersWithCoupon = userRepository.findByUsedCouponsContaining(coupon);
+        for (User user : usersWithCoupon) {
+            user.getUsedCoupons().remove(coupon);
+            userRepository.save(user);
+        }
         couponRepository.deleteById(id);
     }
 }

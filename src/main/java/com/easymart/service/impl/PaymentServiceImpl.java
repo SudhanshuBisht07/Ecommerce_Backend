@@ -3,11 +3,10 @@ package com.easymart.service.impl;
 import com.easymart.domain.OrderStatus;
 import com.easymart.domain.PaymentOrderStatus;
 import com.easymart.domain.PaymentStatus;
-import com.easymart.model.Order;
-import com.easymart.model.PaymentOrder;
-import com.easymart.model.User;
+import com.easymart.model.*;
 import com.easymart.repository.OrderRepository;
 import com.easymart.repository.PaymentOrderRepository;
+import com.easymart.repository.ProductRepository;
 import com.easymart.service.PaymentService;
 import com.razorpay.Payment;
 import com.razorpay.PaymentLink;
@@ -27,11 +26,14 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentOrderRepository paymentOrderRepository;
     private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
 
     @Value("${razorpay.api.key}")
     private String apiKey;
     @Value("${razorpay.api.secret}")
     private String apiSecret;
+    @Value("${frontend.base-url}")
+    private String frontendBaseUrl;
 
     @Override
     public PaymentOrder createOrder(User user, Set<Order> orders) {
@@ -61,7 +63,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public Boolean proceedPaymentOrder(PaymentOrder paymentOrder, String paymentId, String paymentLinkId) throws RazorpayException {
+    public Boolean proceedPaymentOrder(PaymentOrder paymentOrder, String paymentId, String paymentLinkId) throws RazorpayException, Exception {
         if(paymentOrder.getStatus().equals(PaymentOrderStatus.PENDING)){
             RazorpayClient razorpayClient=new RazorpayClient(apiKey, apiSecret);
             Payment payment=razorpayClient.payments.fetch(paymentId);
@@ -70,6 +72,7 @@ public class PaymentServiceImpl implements PaymentService {
                 Set<Order> orders=paymentOrder.getOrders();
                 for(Order order:orders){
                     order.setPaymentStatus(PaymentStatus.COMPLETED);
+                    order.setOrderStatus(OrderStatus.PLACED);
                     orderRepository.save(order);
                 }
                 paymentOrder.setStatus(PaymentOrderStatus.SUCCESS);
@@ -85,7 +88,6 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public PaymentLink createRazorpayPaymentLink(User user, Long amount, Long orderId) throws RazorpayException {
-        amount=amount*100;
         try{
             RazorpayClient razorpayClient=new RazorpayClient(apiKey, apiSecret);
 
@@ -103,8 +105,8 @@ public class PaymentServiceImpl implements PaymentService {
             notify.put("email", true);
 
             paymentLinkRequest.put("notify", notify);
-            paymentLinkRequest.put("callback_url", "http://localhost:3000/payment-success/"+orderId);
-            paymentLinkRequest.put("callback_method","get");
+            paymentLinkRequest.put("callback_url", frontendBaseUrl + "/payment-success/" + orderId);
+            paymentLinkRequest.put("callback_method", "get");
 
             PaymentLink payment=razorpayClient.paymentLink.create(paymentLinkRequest);
             return  payment;

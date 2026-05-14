@@ -5,8 +5,7 @@ import com.easymart.repository.HomeCategoryRepository;
 import com.easymart.service.HomeCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestAttribute;
-import org.springframework.web.bind.annotation.RequestBody;
+
 
 import java.util.List;
 
@@ -37,6 +36,12 @@ public class HomeCategoryServiceImpl implements HomeCategoryService {
             existingCategory.setImage(homeCategory.getImage());
         if(homeCategory.getCategoryId()!=null)
             existingCategory.setCategoryId(homeCategory.getCategoryId());
+        if(homeCategory.getName() != null)
+            existingCategory.setName(homeCategory.getName());
+        if(homeCategory.getSection() != null)
+            existingCategory.setSection(homeCategory.getSection());
+        if(homeCategory.getDiscountPercentage() != null)
+            existingCategory.setDiscountPercentage(homeCategory.getDiscountPercentage());
 
         return homeCategoryRepository.save(existingCategory);
     }

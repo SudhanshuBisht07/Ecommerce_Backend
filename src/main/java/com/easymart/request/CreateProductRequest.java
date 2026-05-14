@@ -13,6 +13,7 @@ public class CreateProductRequest {
     private BigDecimal sellingPrice;
     private String color;
     private List<String> images;
+    private int quantity;
     private String category;
     private String category2;
     private String category3;

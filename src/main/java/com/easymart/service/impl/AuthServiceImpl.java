@@ -15,6 +15,7 @@ import com.easymart.repository.VerificationCodeRepository;
 import com.easymart.request.LoginRequest;
 import com.easymart.response.AuthResponse;
 import com.easymart.request.SignupRequest;
+import com.easymart.service.EmailService;
 import com.easymart.utils.OtpUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -31,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +42,7 @@ public class AuthServiceImpl implements AuthService {
     private final CartRepository cartRepository;
     private final JwtProvider jwtProvider;
     private final VerificationCodeRepository verificationCodeRepository;
-    private final EmailServiceImpl emailService;
+    private final EmailService emailService;
     private final CustomUserServiceImpl customUserService;
     private final SellerRepository sellerRepository;
 
@@ -50,11 +52,6 @@ public class AuthServiceImpl implements AuthService {
             Seller seller = sellerRepository.findByEmail(email);
             if (seller == null) {
                 throw new Exception("seller not found..");
-            }
-        } else {
-            User user = userRepository.findByEmail(email);
-            if (user == null) {
-                throw new Exception("user not exist with provided email");
             }
         }
         VerificationCode exists=verificationCodeRepository.findByEmail(email);
@@ -83,6 +80,7 @@ public class AuthServiceImpl implements AuthService {
         if (verificationCode.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new Exception("OTP has expired");
         }
+        verificationCodeRepository.delete(verificationCode);
         User user=userRepository.findByEmail(req.getEmail());
         if(user==null){
             User createdUser=new User();
@@ -90,7 +88,7 @@ public class AuthServiceImpl implements AuthService {
             createdUser.setFullName(req.getFullName());
             createdUser.setRole(USER_ROLE.ROLE_CUSTOMER);
             createdUser.setMobile(req.getMobile());
-            createdUser.setPassword(passwordEncoder.encode(req.getOtp()));
+            createdUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
 
             user=userRepository.save(createdUser);
 
@@ -100,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
 
         }
         List<GrantedAuthority> authorities= new ArrayList<>();
-        authorities.add(new SimpleGrantedAuthority(USER_ROLE.ROLE_CUSTOMER.toString()));
+        authorities.add(new SimpleGrantedAuthority(user.getRole().toString()));
         Authentication authentication=new UsernamePasswordAuthenticationToken(req.getEmail(), null, authorities);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         return jwtProvider.generateToken(authentication);
@@ -118,8 +116,8 @@ public class AuthServiceImpl implements AuthService {
         authResponse.setMessage("login successful");
 
         Collection<? extends GrantedAuthority> authorities=authentication.getAuthorities();
-        String roleName=authorities.isEmpty()?null:authorities.iterator().next().getAuthority();
-        authResponse.setRole(USER_ROLE.valueOf(roleName));
+        String roleName = authorities.isEmpty() ? null : authorities.iterator().next().getAuthority();
+        authResponse.setRole(roleName != null ? USER_ROLE.valueOf(roleName) : USER_ROLE.ROLE_CUSTOMER);
         return authResponse;
     }
     private Authentication authenticate(String username, String otp){

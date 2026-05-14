@@ -2,7 +2,7 @@ package com.easymart.controller;
 
 import com.easymart.model.SellerReport;
 import com.easymart.service.AuthService;
-import com.easymart.service.impl.EmailServiceImpl;
+import com.easymart.service.EmailService;
 import com.easymart.service.SellerReportService;
 import com.easymart.service.SellerService;
 import com.easymart.domain.AccountStatus;
@@ -14,8 +14,10 @@ import com.easymart.request.LoginRequest;
 import com.easymart.response.AuthResponse;
 import com.easymart.utils.OtpUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -25,10 +27,14 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/sellers")
 public class SellerController {
+
+    @Value("${frontend.base-url}")
+    private String frontendBaseUrl;
+
     private final AuthService authService;
     private final VerificationCodeRepository verificationCodeRepository;
     private final SellerService sellerService;
-    private final EmailServiceImpl emailService;
+    private final EmailService emailService;
     private final SellerReportService sellerReportService;
 
     @PostMapping("/login")
@@ -39,12 +45,12 @@ public class SellerController {
 
     }
     @PatchMapping("/verify/{otp}")
-    public ResponseEntity<Seller> verifySellerEmail(@PathVariable String otp)throws Exception{
-        VerificationCode verificationCode=verificationCodeRepository.findByOtp(otp);
-        if(verificationCode==null|| !verificationCode.getOtp().equals(otp)){
-            throw new Exception("wrong otp");
+    public ResponseEntity<Seller> verifySellerEmail(@PathVariable String otp) throws Exception {
+        VerificationCode verificationCode = verificationCodeRepository.findByOtp(otp);
+        if(verificationCode == null){
+            throw new Exception("Invalid or expired OTP");
         }
-        Seller seller=sellerService.verifyEmail(verificationCode.getEmail(), otp);
+        Seller seller = sellerService.verifyEmail(verificationCode.getEmail(), otp);
         return new ResponseEntity<>(seller, HttpStatus.OK);
     }
     @PostMapping
@@ -58,7 +64,7 @@ public class SellerController {
         verificationCodeRepository.save(verificationCode);
         String subject="EasyMart email verification code.";
         String text="Welcome to EasyMart, verify your email using this link.";
-        String frontend_url="http://localhost:3000/verify-seller/";
+        String frontend_url = frontendBaseUrl + "/verify-seller/";
         emailService.sendVerificationOtpEmail(savedSeller.getEmail(), verificationCode.getOtp(), subject, text + frontend_url+ verificationCode.getOtp());
         return new ResponseEntity<>(savedSeller, HttpStatus.CREATED);
     }
@@ -83,17 +89,11 @@ public class SellerController {
         Seller updatedSeller=sellerService.updateSeller(profile.getId(), seller);
         return ResponseEntity.ok(updatedSeller);
     }
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSeller(@PathVariable Long id)throws SellerException{
         sellerService.deleteSeller(id);
         return ResponseEntity.noContent().build();
-    }
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<Seller> updateSellerStatus(
-            @PathVariable Long id,
-            @RequestParam AccountStatus status) throws SellerException {
-        Seller updatedSeller = sellerService.updateSellerAccountStatus(id, status);
-        return ResponseEntity.ok(updatedSeller);
     }
     @GetMapping("/report")
     public ResponseEntity<SellerReport> getSellerReport(@RequestHeader("Authorization")String jwt)throws Exception{

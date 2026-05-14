@@ -5,7 +5,6 @@ import com.easymart.model.Coupon;
 import com.easymart.model.User;
 import com.easymart.service.CartService;
 import com.easymart.service.CouponService;
-import com.easymart.service.ReviewService;
 import com.easymart.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,13 +22,13 @@ public class AdminCouponController {
 
     @PostMapping("/apply")
     public ResponseEntity<Cart> applyCoupon(
-            @RequestParam String apply,
+            @RequestParam boolean apply,
             @RequestParam String code,
             @RequestParam double orderValue,
             @RequestHeader("Authorization") String jwt)throws Exception{
         User user=userService.findUserByJwtToken(jwt);
         Cart cart;
-        if(apply.equals("true")){
+        if(apply){
             cart=couponService.applyCoupon(code, orderValue, user);
         }
         else{

@@ -13,9 +13,10 @@ import java.util.Set;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
 public class Cart {
+    @EqualsAndHashCode.Include
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
@@ -30,6 +31,7 @@ public class Cart {
     private BigDecimal totalMrpPrice;
     private BigDecimal discount;
     private String couponCode;
+    private BigDecimal couponDiscount;
 
 
 

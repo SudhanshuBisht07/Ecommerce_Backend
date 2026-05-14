@@ -1,5 +1,6 @@
 package com.easymart.service.impl;
 
+import com.easymart.service.EmailService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class EmailServiceImpl {
+public class EmailServiceImpl implements EmailService {
     private final JavaMailSender javaMailSender;
     public void sendVerificationOtpEmail(String userEmail, String otp, String subject, String text)throws MessagingException {
         try{

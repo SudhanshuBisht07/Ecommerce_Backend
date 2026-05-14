@@ -39,15 +39,20 @@ public class HomeServiceImpl implements HomeService {
                 .collect(Collectors.toList());
         List<Deal> createDeals;
         List<Deal> existingDeals = dealRepository.findAll();
-        if(existingDeals.isEmpty()){
-            List<Deal> deals=allCategories.stream()
-                    .filter(homeCategory -> homeCategory.getSection()==HomeCategorySection.DEALS)
-                    .map(homeCategory -> new Deal(null, homeCategory.getDiscountPercentage(), homeCategory))
-                    .collect(Collectors.toList());
-            createDeals=dealRepository.saveAll(deals);
+
+        List<HomeCategory> categoriesWithDeals = existingDeals.stream()
+                .map(Deal::getCategory)
+                .collect(Collectors.toList());
+
+        List<Deal> newDeals = dealCategories.stream()
+                .filter(hc -> !categoriesWithDeals.contains(hc))
+                .map(hc -> new Deal(null, hc.getDiscountPercentage(), hc))
+                .collect(Collectors.toList());
+
+        if (!newDeals.isEmpty()) {
+            existingDeals.addAll(dealRepository.saveAll(newDeals));
         }
-        else
-            createDeals=existingDeals;
+        createDeals = existingDeals;
 
         Home home=new Home();
         home.setGrid(gridCategories);

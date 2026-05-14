@@ -37,6 +37,7 @@ public class ProductServiceImpl implements ProductService {
         if(category1==null){
             Category category=new Category();
             category.setCategoryId(req.getCategory());
+            category.setName(req.getCategory());
             category.setLevel(1);
             category1=categoryRepository.save(category);
         }
@@ -44,6 +45,7 @@ public class ProductServiceImpl implements ProductService {
         if(category2==null){
             Category category=new Category();
             category.setCategoryId(req.getCategory2());
+            category.setName(req.getCategory2());
             category.setLevel(2);
             category.setParentCategory(category1);
             category2=categoryRepository.save(category);
@@ -52,6 +54,7 @@ public class ProductServiceImpl implements ProductService {
         if(category3==null){
             Category category=new Category();
             category.setCategoryId(req.getCategory3());
+            category.setName(req.getCategory3());
             category.setLevel(3);
             category.setParentCategory(category2);
             category3=categoryRepository.save(category);
@@ -68,20 +71,22 @@ public class ProductServiceImpl implements ProductService {
         product.setSize(req.getSize());
         product.setSellingPrice(req.getSellingPrice());
         product.setMrpPrice(req.getMrpPrice());
-        int discountPercentage=calculateDiscountPercentage(req.getMrpPrice().intValue(), req.getSellingPrice().intValue());
+        product.setQuantity(req.getQuantity());
+        int discountPercentage=calculateDiscountPercentage(req.getMrpPrice(), req.getSellingPrice());
         product.setDiscountPercent(discountPercentage);
         return productRepository.save(product);
     }
-    private int calculateDiscountPercentage(int mrpPrice, int sellingPrice){
-        if(mrpPrice<=0){
-            throw new IllegalArgumentException("actual price must be greater than zero ");
+    private int calculateDiscountPercentage(BigDecimal mrpPrice, BigDecimal sellingPrice){
+        if(mrpPrice.compareTo(BigDecimal.ZERO) <= 0){
+            throw new IllegalArgumentException("actual price must be greater than zero");
         }
-        double discount=mrpPrice-sellingPrice;
-        if(discount<0){
+        BigDecimal discount = mrpPrice.subtract(sellingPrice);
+        if(discount.compareTo(BigDecimal.ZERO) < 0){
             throw new IllegalArgumentException("actual price must be greater than selling price");
         }
-        double discountPercentage=(discount/mrpPrice)*100;
-        return (int)discountPercentage;
+        return discount.multiply(BigDecimal.valueOf(100))
+                .divide(mrpPrice, 0, java.math.RoundingMode.HALF_UP)
+                .intValue();
     }
 
     @Override
@@ -109,10 +114,13 @@ public class ProductServiceImpl implements ProductService {
             existingProduct.setImages(product.getImages());
         if(product.getSize() != null)
             existingProduct.setSize(product.getSize());
-        if(product.getSellingPrice() != null || product.getMrpPrice() != null) {
+        if (existingProduct.getMrpPrice() != null && existingProduct.getSellingPrice() != null) {
+            if (existingProduct.getSellingPrice().compareTo(existingProduct.getMrpPrice()) > 0) {
+                throw new ProductException("Selling price cannot be greater than MRP price");
+            }
             int discount = calculateDiscountPercentage(
-                    existingProduct.getMrpPrice() != null ? existingProduct.getMrpPrice().intValue() : 0,
-                    existingProduct.getSellingPrice() != null ? existingProduct.getSellingPrice().intValue() : 0
+                    existingProduct.getMrpPrice(),
+                    existingProduct.getSellingPrice()
             );
             existingProduct.setDiscountPercent(discount);
         }

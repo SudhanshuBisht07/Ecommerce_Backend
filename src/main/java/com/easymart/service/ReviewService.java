@@ -3,7 +3,6 @@ package com.easymart.service;
 import com.easymart.model.Product;
 import com.easymart.model.Review;
 import com.easymart.model.User;
-import com.easymart.request.CreateProductRequest;
 import com.easymart.request.CreateReviewRequest;
 
 import java.util.List;

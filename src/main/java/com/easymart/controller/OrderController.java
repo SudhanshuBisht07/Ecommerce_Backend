@@ -1,5 +1,6 @@
 package com.easymart.controller;
 
+import com.easymart.domain.PaymentStatus;
 import com.easymart.model.*;
 import com.easymart.response.PaymentLinkResponse;
 import com.easymart.service.*;
@@ -10,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Set;
 
@@ -26,7 +29,7 @@ public class OrderController {
     private final PaymentService paymentService;
 
 
-
+    @Transactional
     @PostMapping
     public ResponseEntity<PaymentLinkResponse> createOrderHandler(
             @RequestBody Address shippingAddress,
@@ -40,12 +43,15 @@ public class OrderController {
         PaymentOrder paymentOrder=paymentService.createOrder(user, orders);
 
         PaymentLinkResponse paymentLinkResponse=new PaymentLinkResponse();
-
-        PaymentLink payment=paymentService.createRazorpayPaymentLink(user,
-                    paymentOrder.getAmount().longValue(), paymentOrder.getId());
+        long amountInPaise = paymentOrder.getAmount()
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValue();
+        PaymentLink payment=paymentService.createRazorpayPaymentLink(user, amountInPaise, paymentOrder.getId());
         String paymentUrl=payment.get("short_url");
         String paymentUrlId=payment.get("id");
         paymentLinkResponse.setPayment_link_url(paymentUrl);
+        paymentLinkResponse.setPayment_link_id(paymentUrlId);
         paymentOrder.setPaymentLinkId(paymentUrlId);
         paymentService.updatePaymentOrder(paymentOrder);
         return new ResponseEntity<>(paymentLinkResponse, HttpStatus.OK);
@@ -58,7 +64,7 @@ public class OrderController {
 
         User user= userService.findUserByJwtToken(jwt);
         List<Order> orders=orderService.userOrderHistory(user.getId());
-        return new ResponseEntity<>(orders, HttpStatus.ACCEPTED);
+        return new ResponseEntity<>(orders, HttpStatus.OK);
     }
 
     @GetMapping("/{orderId}")
@@ -81,7 +87,7 @@ public class OrderController {
         if (!orderItem.getUserId().equals(user.getId())) {
             throw new Exception("You don't have access to this order item");
         }
-        return new ResponseEntity<>(orderItem, HttpStatus.ACCEPTED);
+        return new ResponseEntity<>(orderItem, HttpStatus.OK);
     }
     @Transactional
     @PutMapping("/{orderId}/cancel")
@@ -96,9 +102,13 @@ public class OrderController {
        Seller seller=sellerService.getSellerById(order.getSellerId());
        SellerReport sellerReport=sellerReportService.getSellerReport(seller);
 
-       sellerReport.setCancelledOrders(sellerReport.getCancelledOrders()+1);
-        sellerReport.setTotalRefunds(sellerReport.getTotalRefunds().add(order.getTotalSellingPrice()));
-       sellerReportService.updateSellerReport(sellerReport);
+        sellerReport.setCancelledOrders(sellerReport.getCancelledOrders()+1);
+        if(order.getPaymentStatus() == PaymentStatus.COMPLETED){
+            sellerReport.setTotalRefunds(sellerReport.getTotalRefunds().add(order.getTotalSellingPrice()));
+            sellerReport.setTotalEarnings(
+                    sellerReport.getTotalEarnings().subtract(order.getTotalSellingPrice()));
+        }
+        sellerReportService.updateSellerReport(sellerReport);
 
         return ResponseEntity.ok(order);
     }

@@ -36,29 +36,37 @@ public class SellerProductController {
         return new ResponseEntity<>(product, HttpStatus.CREATED);
     }
     @DeleteMapping("/{productId}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long productId, @RequestHeader("Authorization") String jwt){
+    public ResponseEntity<?> deleteProduct(@PathVariable Long productId, @RequestHeader("Authorization") String jwt){
         try{
-            sellerService.getSellerProfile(jwt);
+            Seller seller = sellerService.getSellerProfile(jwt);
+            Product product = productService.findProductById(productId);
+            if(!product.getSeller().getId().equals(seller.getId())){
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
             productService.deleteProduct(productId);
             return new ResponseEntity<>(HttpStatus.OK);
-        } catch (ProductException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch(ProductException e){
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
         }
-        catch (SellerException e) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        catch(SellerException e){
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
         }
     }
     @PutMapping("/{productId}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long productId, @RequestBody Product product,@RequestHeader("Authorization") String jwt){
+    public ResponseEntity<?> updateProduct(@PathVariable Long productId, @RequestBody Product product,@RequestHeader("Authorization") String jwt){
         try{
-            sellerService.getSellerProfile(jwt);
-            Product updatedProduct=productService.updateProduct(productId, product);
+            Seller seller = sellerService.getSellerProfile(jwt);
+            Product existingProduct = productService.findProductById(productId);
+            if(!existingProduct.getSeller().getId().equals(seller.getId())){
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
+            Product updatedProduct = productService.updateProduct(productId, product);
             return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
         }catch(ProductException e){
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
         }
-         catch (SellerException e) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        catch(SellerException e){
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
         }
     }
 

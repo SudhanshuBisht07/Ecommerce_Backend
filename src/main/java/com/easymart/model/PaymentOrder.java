@@ -13,10 +13,11 @@ import java.util.Set;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
 
 public class PaymentOrder {
+    @EqualsAndHashCode.Include
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
@@ -32,5 +33,10 @@ public class PaymentOrder {
     private User user;
 
     @OneToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "payment_order_orders",
+            joinColumns = @JoinColumn(name = "payment_order_id"),
+            inverseJoinColumns = @JoinColumn(name = "order_id")
+    )
     private Set<Order> orders = new HashSet<>();
 }

@@ -9,11 +9,10 @@ import java.time.LocalDateTime;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
-
 public class VerificationCode {
-
+    @EqualsAndHashCode.Include
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
@@ -21,11 +20,4 @@ public class VerificationCode {
     private String otp;
     private String email;
     private LocalDateTime expiresAt;
-
-    @OneToOne
-    private User user;
-
-    @OneToOne
-    private Seller seller;
-
 }

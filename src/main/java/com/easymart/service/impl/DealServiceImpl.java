@@ -22,12 +22,11 @@ public class DealServiceImpl implements DealService {
     }
 
     @Override
-    public Deal createDeal(Deal deal) {
-        HomeCategory category=homeCategoryRepository.findById(deal.getCategory().getId()).orElse(null);
-        Deal newDeal=dealRepository.save(deal);
-        newDeal.setCategory(category);
-        newDeal.setDiscount(deal.getDiscount());
-        return dealRepository.save(newDeal);
+    public Deal createDeal(Deal deal) throws Exception{
+        HomeCategory category = homeCategoryRepository.findById(deal.getCategory().getId())
+                .orElseThrow(() -> new Exception("HomeCategory not found with id: " + deal.getCategory().getId()));
+        deal.setCategory(category);
+        return dealRepository.save(deal);
     }
 
     @Override
@@ -40,7 +39,7 @@ public class DealServiceImpl implements DealService {
                 existingDeal.setDiscount(deal.getDiscount());
             }
             if(category!=null){
-                existingDeal.setCategory(deal.getCategory());
+                existingDeal.setCategory(category);
             }
             return dealRepository.save(existingDeal);
         }

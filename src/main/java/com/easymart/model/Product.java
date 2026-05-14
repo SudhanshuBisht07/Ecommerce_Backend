@@ -12,10 +12,11 @@ import java.util.List;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
 
 public class Product {
+    @EqualsAndHashCode.Include
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
@@ -31,6 +32,8 @@ public class Product {
     @ElementCollection(fetch = FetchType.EAGER) //creates seperate table for this
     private List<String> images = new ArrayList<>();
     private int numRatings;
+    @Column(nullable = false)
+    private Double avgRatings = 0.0;
 
     @ManyToOne
     private Category category;

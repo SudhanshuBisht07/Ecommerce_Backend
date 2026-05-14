@@ -1,7 +1,9 @@
 package com.easymart.service.impl;
 
 import com.easymart.model.VerificationCode;
+import com.easymart.repository.SellerReportRepository;
 import com.easymart.repository.VerificationCodeRepository;
+import com.easymart.service.SellerReportService;
 import com.easymart.service.SellerService;
 import com.easymart.config.JwtProvider;
 import com.easymart.domain.AccountStatus;
@@ -27,6 +29,7 @@ public class SellerServiceImpl implements SellerService {
     private final PasswordEncoder passwordEncoder;
     private final AddressRepository addressRepository;
     private final VerificationCodeRepository verificationCodeRepository;
+    private final SellerReportRepository sellerReportRepository;
 
 
     @Override
@@ -55,7 +58,7 @@ public class SellerServiceImpl implements SellerService {
         newSeller.setMobile(seller.getMobile());
         newSeller.setBankDetails(seller.getBankDetails());
         newSeller.setBusinessDetails(seller.getBusinessDetails());
-         return sellerRepository.save(newSeller);
+        return sellerRepository.save(newSeller);
 
     }
 

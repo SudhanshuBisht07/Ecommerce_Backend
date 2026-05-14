@@ -7,6 +7,7 @@ import com.easymart.repository.*;
 import com.easymart.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -22,19 +23,18 @@ public class OrderServiceImpl implements OrderService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
-
+    private final ProductRepository productRepository;
+    @Transactional
     @Override
     public Set<Order> createOrder(User user, Address shippingAddress, Cart cart) throws Exception {
-
+        if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
+            throw new Exception("Cart is empty");
+        }
         Address address=addressRepository.save(shippingAddress);
         if(!user.getAddresses().contains(shippingAddress)){
             user.getAddresses().add(shippingAddress);
             userRepository.save(user);
         }
-        if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
-            throw new Exception("Cart is empty");
-        }
-
         Map<Long, List<CartItem>> itemsBySeller=cart.getCartItems().stream()
                 .collect(Collectors.groupingBy(item->item.getProduct().getSeller().getId()));
         Set<Order> orders=new HashSet<>();
@@ -61,10 +61,20 @@ public class OrderServiceImpl implements OrderService {
             createdOrder.setShippingAddress(address);
             createdOrder.setOrderStatus(OrderStatus.PENDING);
             createdOrder.getPaymentDetails().setStatus(PaymentStatus.PENDING);
+
+            for(CartItem item : items){
+                Product product = productRepository.findById(item.getProduct().getId())
+                        .orElseThrow(() -> new Exception("Product not found"));
+                if(product.getQuantity() < item.getQuantity()){
+                    throw new Exception("Insufficient stock for product: " + product.getTitle());
+                }
+                product.setQuantity(product.getQuantity() - item.getQuantity());
+                productRepository.save(product);
+            }
+
+
             Order savedOrder=orderRepository.save(createdOrder);
             orders.add(savedOrder);
-
-            List<OrderItem> orderItems=new ArrayList<>();
 
             for(CartItem item:items){
                 OrderItem orderItem=new OrderItem();
@@ -75,17 +85,14 @@ public class OrderServiceImpl implements OrderService {
                 orderItem.setSize(item.getSize());
                 orderItem.setUserId(item.getUserId());
                 orderItem.setSellingPrice(item.getSellingPrice());
-
-                savedOrder.getOrderItems().add(orderItem);
-
-                OrderItem savedOrderItem=orderItemRepository.save(orderItem);
-                orderItems.add(savedOrderItem);
+                orderItemRepository.save(orderItem);
             }
         }
         cartItemRepository.deleteAll(new ArrayList<>(cart.getCartItems()));
         cart.getCartItems().clear();
         cart.setDiscount(BigDecimal.ZERO);
         cart.setCouponCode(null);
+        cart.setCouponDiscount(null);
         cart.setTotalMrpPrice(BigDecimal.ZERO);
         cart.setTotalSellingPrice(BigDecimal.ZERO);
         cart.setTotalItems(0);
@@ -114,14 +121,29 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderStatus(orderStatus);
         return orderRepository.save(order);
     }
-
+    @Transactional
     @Override
     public Order cancelOrder(Long orderId, User user) throws Exception {
         Order order=findOrderById(orderId);
         if(!user.getId().equals(order.getUser().getId())){
             throw new Exception("you dont have access to this order");
         }
+        if(order.getOrderStatus() == OrderStatus.CANCELLED){
+            throw new Exception("Order is already cancelled");
+        }
+        if(order.getOrderStatus() == OrderStatus.DELIVERED){
+            throw new Exception("Cannot cancel a delivered order");
+        }
+        if(order.getOrderStatus() == OrderStatus.SHIPPED){
+            throw new Exception("Cannot cancel an order that has already been shipped");
+        }
         order.setOrderStatus(OrderStatus.CANCELLED);
+        for(OrderItem item : order.getOrderItems()){
+            Product product = productRepository.findById(item.getProduct().getId())
+                    .orElseThrow(() -> new Exception("Product not found during stock restore"));
+            product.setQuantity(product.getQuantity() + item.getQuantity());
+            productRepository.save(product);
+        }
         return orderRepository.save(order);
     }
 

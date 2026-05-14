@@ -3,21 +3,34 @@ package com.easymart.service.impl;
 import com.easymart.model.Product;
 import com.easymart.model.Review;
 import com.easymart.model.User;
+import com.easymart.repository.ProductRepository;
 import com.easymart.repository.ReviewRepository;
 import com.easymart.request.CreateReviewRequest;
 import com.easymart.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.EmptyStackException;
 import java.util.List;
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class ReviewServiceImpl implements ReviewService {
 
     private final ReviewRepository reviewRepository;
+    private final ProductRepository productRepository;
 
 
+    private void updateProductRating(Product product) {
+        List<Review> allReviews = reviewRepository.findByProductId(product.getId());
+        product.setNumRatings(allReviews.size());
+        double avg = allReviews.stream()
+                .mapToDouble(Review::getRating)
+                .average()
+                .orElse(0.0);
+        product.setAvgRatings(avg);
+        productRepository.save(product);
+    }
     @Override
     public Review createReview(CreateReviewRequest request, User user, Product product) {
         Review review=new Review();
@@ -28,7 +41,10 @@ public class ReviewServiceImpl implements ReviewService {
         review.setProductImages(request.getProductImages());
 
         product.getReviews().add(review);
-        return reviewRepository.save(review);
+        Review savedReview = reviewRepository.save(review);
+
+        updateProductRating(product);
+        return savedReview;
     }
 
     @Override
@@ -38,21 +54,29 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public Review updateReview(Long reviewId, String reviewText, double rating, Long userId) throws Exception {
-        Review review=getReviewById(reviewId);
-        if(review.getUser().getId().equals(userId)) {
+        Review review = getReviewById(reviewId);
+        if (review.getUser().getId().equals(userId)) {
             review.setReviewText(reviewText);
             review.setRating(rating);
-            return reviewRepository.save(review);
+            Review saved = reviewRepository.save(review);
+            Product freshProduct = productRepository.findById(review.getProduct().getId())
+                    .orElseThrow(() -> new Exception("Product not found"));
+            updateProductRating(freshProduct);
+            return saved;
         }
         throw new Exception("you cant update this review");
     }
 
+    @Transactional
     @Override
     public void deleteReview(Long reviewId, Long userId) throws Exception {
-        Review review=getReviewById(reviewId);
-        if(!review.getUser().getId().equals(userId))
+        Review review = getReviewById(reviewId);
+        if (!review.getUser().getId().equals(userId))
             throw new Exception("you cant delete this review");
-        reviewRepository.delete(review);
+        Product product = review.getProduct();
+        product.getReviews().remove(review);
+        productRepository.save(product);
+        updateProductRating(product);
     }
 
     @Override

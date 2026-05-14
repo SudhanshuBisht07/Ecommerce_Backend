@@ -25,7 +25,7 @@ public class PaymentController {
     private final TransactionService transactionService;
 
     @Transactional
-    @GetMapping("/{paymentId}")
+    @PostMapping("/{paymentId}")
     public ResponseEntity<ApiResponse> paymentSuccessHandler(
             @PathVariable String paymentId,
             @RequestParam String paymentLinkId,
@@ -45,10 +45,13 @@ public class PaymentController {
                 report.setTotalSales(report.getTotalSales().add(BigDecimal.valueOf(order.getOrderItems().size())));
                 sellerReportService.updateSellerReport(report);
             }
+            ApiResponse res= new ApiResponse();
+            res.setMessage("Payment Successful");
+            return new ResponseEntity<>(res, HttpStatus.OK);
         }
-        ApiResponse res= new ApiResponse();
-        res.setMessage("Payment Successful");
-        return new ResponseEntity<>(res, HttpStatus.CREATED);
+        ApiResponse res = new ApiResponse();
+        res.setMessage("Payment failed or was not completed");
+        return new ResponseEntity<>(res, HttpStatus.PAYMENT_REQUIRED);
     }
 
 }
