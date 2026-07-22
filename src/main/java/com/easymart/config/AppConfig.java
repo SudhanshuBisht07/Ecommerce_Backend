@@ -15,13 +15,15 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class AppConfig {
-    @Value("${cors.allowed-origins:http://localhost:3000}")
+    @Value("${cors.allowed-origins:http://localhost:5173}")
     private String allowedOrigins;
 
     @Bean
@@ -33,6 +35,7 @@ public class AppConfig {
                         .requestMatchers("/products/**").permitAll()
                         .requestMatchers("/sellers/login").permitAll()
                         .requestMatchers("/sellers/verify/**").permitAll()
+                        .requestMatchers("/api/categories/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/sellers").permitAll()
                         .requestMatchers("/sellers/**").authenticated()
                         .requestMatchers("/users/**").authenticated()
@@ -60,7 +63,7 @@ public class AppConfig {
             @Override
             public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                 CorsConfiguration cfg=new CorsConfiguration();
-                cfg.setAllowedOrigins(Collections.singletonList(allowedOrigins));
+                cfg.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
                 cfg.setAllowedMethods(Collections.singletonList("*"));
                 cfg.setAllowedHeaders(Collections.singletonList("*"));
                 cfg.setAllowCredentials(true);
