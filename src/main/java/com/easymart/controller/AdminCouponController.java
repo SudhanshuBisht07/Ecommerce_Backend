@@ -46,6 +46,12 @@ public class AdminCouponController {
         couponService.deleteCoupon(id);
         return ResponseEntity.ok("coupon deleted successfully");
     }
+    @PatchMapping("/admin/{id}/status")
+    public ResponseEntity<Coupon> updateCouponStatus(@PathVariable Long id, @RequestParam boolean isActive) throws Exception {
+        Coupon coupon = couponService.updateCouponStatus(id, isActive);
+        return ResponseEntity.ok(coupon);
+    }
+
     @GetMapping("/admin/all")
     public ResponseEntity<List<Coupon>> getAllCoupons(){
         List<Coupon> coupons=couponService.findAllCoupons();

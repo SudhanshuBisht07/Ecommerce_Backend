@@ -32,6 +32,7 @@ public class OrderItem {
 
     private BigDecimal mrpPrice;
     private BigDecimal sellingPrice;
+    private BigDecimal wholesalePrice;
     private Long userId;
 
 

@@ -31,4 +31,41 @@ public class CategoryServiceImpl implements CategoryService {
                 ))
                 .toList();
     }
+
+    @Override
+    public Category createCategory(String name, String categoryId, Integer level, String parentCategoryId) throws Exception {
+        if (categoryRepository.findByCategoryId(categoryId) != null) {
+            throw new Exception("A category with id '" + categoryId + "' already exists");
+        }
+
+        Category category = new Category();
+        category.setName(name);
+        category.setCategoryId(categoryId);
+        category.setLevel(level);
+
+        if (parentCategoryId != null && !parentCategoryId.isBlank()) {
+            Category parent = categoryRepository.findByCategoryId(parentCategoryId);
+            if (parent == null) {
+                throw new Exception("Parent category not found");
+            }
+            category.setParentCategory(parent);
+        }
+
+        return categoryRepository.save(category);
+    }
+
+    @Override
+    public Category updateCategory(Long id, String name) throws Exception {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new Exception("Category not found"));
+        category.setName(name);
+        return categoryRepository.save(category);
+    }
+
+    @Override
+    public void deleteCategory(Long id) throws Exception {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new Exception("Category not found"));
+        categoryRepository.delete(category);
+    }
 }

@@ -9,12 +9,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/deals")
 public class DealController {
 
     private final DealService dealService;
+
+    @GetMapping
+    public ResponseEntity<List<Deal>> getDeals() {
+        return ResponseEntity.ok(dealService.getDeals());
+    }
 
     @PostMapping
     public ResponseEntity<Deal> createDeals(@RequestBody Deal deal) throws Exception {

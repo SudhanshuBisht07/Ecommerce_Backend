@@ -91,6 +91,14 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public Coupon updateCouponStatus(Long id, boolean isActive) throws Exception {
+        Coupon coupon = findCouponById(id);
+        coupon.setActive(isActive);
+        return couponRepository.save(coupon);
+    }
+
+    @Override
     public List<Coupon> findAllCoupons() {
         return couponRepository.findAll();
     }

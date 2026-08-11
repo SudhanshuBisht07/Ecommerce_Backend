@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,5 +49,12 @@ public class ProductController {
                         maxPrice, minDiscount,
                         sort, stock, pageNumber),
                 HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @DeleteMapping("/{productId}")
+    public ResponseEntity<?> deleteProductHandler(@PathVariable Long productId) throws ProductException {
+        productService.deleteProduct(productId);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

@@ -12,6 +12,7 @@ import com.easymart.model.VerificationCode;
 import com.easymart.repository.VerificationCodeRepository;
 import com.easymart.request.LoginRequest;
 import com.easymart.response.AuthResponse;
+import com.easymart.response.SalesDataPoint;
 import com.easymart.utils.OtpUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,11 +57,16 @@ public class SellerController {
     @PostMapping
     public ResponseEntity<Seller> createSeller(@RequestBody Seller seller) throws Exception{
         Seller savedSeller=sellerService.createSeller(seller);
+        VerificationCode existingCode = verificationCodeRepository.findByEmailAndPurpose(savedSeller.getEmail(), "EMAIL_VERIFICATION");
+        if (existingCode != null) {
+            verificationCodeRepository.delete(existingCode);
+        }
         String otp= OtpUtil.generateOtp();
         VerificationCode verificationCode=new VerificationCode();
         verificationCode.setOtp(otp);
         verificationCode.setEmail(savedSeller.getEmail());
-        verificationCode.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        verificationCode.setExpiresAt(LocalDateTime.now().plusHours(24));
+        verificationCode.setPurpose("EMAIL_VERIFICATION");
         verificationCodeRepository.save(verificationCode);
         String subject="EasyMart email verification code.";
         String text="Welcome to EasyMart, verify your email using this link.";
@@ -100,6 +106,14 @@ public class SellerController {
         Seller seller=sellerService.getSellerProfile(jwt);
         SellerReport report=sellerReportService.getSellerReport(seller);
         return new ResponseEntity<>(report, HttpStatus.OK);
+    }
+    @GetMapping("/report/timeline")
+    public ResponseEntity<List<SalesDataPoint>> getSalesTimeline(
+            @RequestHeader("Authorization")String jwt,
+            @RequestParam(defaultValue = "30") int days)throws Exception{
+        Seller seller=sellerService.getSellerProfile(jwt);
+        List<SalesDataPoint> timeline=sellerReportService.getSalesTimeline(seller, days);
+        return new ResponseEntity<>(timeline, HttpStatus.OK);
     }
 
 }

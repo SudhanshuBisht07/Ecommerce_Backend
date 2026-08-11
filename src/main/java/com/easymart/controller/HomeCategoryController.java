@@ -24,6 +24,17 @@ public class HomeCategoryController {
         return new ResponseEntity<>(home, HttpStatus.ACCEPTED);
     }
 
+    // Powers the storefront homepage: groups every admin-configured tile by
+    // its "Homepage section" (Shop by categories / Electric categories /
+    // Grid / Deals) so the tiles created in the admin panel actually render
+    // somewhere for shoppers instead of only existing in the admin table.
+    @GetMapping("/home/categories")
+    public ResponseEntity<Home> getHomePageData(){
+        List<HomeCategory> categories=homeCategoryService.getAllHomeCategories();
+        Home home= homeService.createHomePageData(categories);
+        return ResponseEntity.ok(home);
+    }
+
     @GetMapping("/admin/home-category")
     public ResponseEntity<List<HomeCategory>> getHomeCategory(){
         List<HomeCategory> categories=homeCategoryService.getAllHomeCategories();

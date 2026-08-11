@@ -46,15 +46,29 @@ public class AuthServiceImpl implements AuthService {
     private final CustomUserServiceImpl customUserService;
     private final SellerRepository sellerRepository;
 
+    // The only email allowed to request an admin OTP. There is no
+    // self-service admin signup — this account is provisioned directly in
+    // the database — so this is a fixed allowlist of one.
+    private static final String ADMIN_EMAIL = "easymart.support@gmail.com";
+
     @Override
-    public void sentLoginOtp(String email, USER_ROLE role) throws Exception {
+    public void sentLoginOtp(String email, USER_ROLE role, boolean isLogin) throws Exception {
         if (role.equals(USER_ROLE.ROLE_SELLER)) {
             Seller seller = sellerRepository.findByEmail(email);
             if (seller == null) {
-                throw new Exception("seller not found..");
+                throw new IllegalArgumentException("No seller account found for this email. Please register your business.");
             }
         }
-        VerificationCode exists=verificationCodeRepository.findByEmail(email);
+        if (role.equals(USER_ROLE.ROLE_ADMIN) && !email.equalsIgnoreCase(ADMIN_EMAIL)) {
+            throw new Exception("unauthorized admin email");
+        }
+        if (role.equals(USER_ROLE.ROLE_CUSTOMER) && isLogin) {
+            User existingUser = userRepository.findByEmail(email);
+            if (existingUser == null) {
+                throw new IllegalArgumentException("No account found for this email. Please create an account.");
+            }
+        }
+        VerificationCode exists=verificationCodeRepository.findByEmailAndPurpose(email, "OTP");
         if(exists!=null){
             verificationCodeRepository.delete(exists);
         }
@@ -63,6 +77,7 @@ public class AuthServiceImpl implements AuthService {
         verificationCode.setOtp(otp);
         verificationCode.setEmail(email);
         verificationCode.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        verificationCode.setPurpose("OTP");
         verificationCodeRepository.save(verificationCode);
 
         String subject="EasyMart login/signup otp";
@@ -73,7 +88,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public String createUser(SignupRequest req) throws Exception {
 
-        VerificationCode verificationCode=verificationCodeRepository.findByEmail(req.getEmail());
+        VerificationCode verificationCode=verificationCodeRepository.findByEmailAndPurpose(req.getEmail(), "OTP");
         if(verificationCode==null|| !verificationCode.getOtp().equals(req.getOtp())){
             throw new Exception("wrong otp...");
         }
@@ -125,17 +140,25 @@ public class AuthServiceImpl implements AuthService {
         String emailForOtpLookup = username.startsWith(SELLER_PREFIX)
                 ? username.substring(SELLER_PREFIX.length())
                 : username;
-        UserDetails userDetails=customUserService.loadUserByUsername(username);
+        UserDetails userDetails;
+        try {
+            userDetails = customUserService.loadUserByUsername(username);
+        } catch (org.springframework.security.core.userdetails.UsernameNotFoundException e) {
+            String message = username.startsWith(SELLER_PREFIX)
+                    ? "No seller account found for this email. Please register your business."
+                    : "No account found for this email. Please create an account.";
+            throw new IllegalArgumentException(message);
+        }
         if(userDetails==null){
             throw new BadCredentialsException("invalid username or password");
         }
         if (username.startsWith(SELLER_PREFIX)) {
             Seller seller = sellerRepository.findByEmail(emailForOtpLookup);
             if (seller != null && seller.getAccountStatus() != AccountStatus.ACTIVE) {
-                throw new BadCredentialsException("Seller account is not active");
+                throw new BadCredentialsException("Seller account status: " + seller.getAccountStatus());
             }
         }
-        VerificationCode verificationCode=verificationCodeRepository.findByEmail(emailForOtpLookup);
+        VerificationCode verificationCode=verificationCodeRepository.findByEmailAndPurpose(emailForOtpLookup, "OTP");
         if(verificationCode==null|| !verificationCode.getOtp().equals(otp)){
             throw new BadCredentialsException("wrong otp");
         }

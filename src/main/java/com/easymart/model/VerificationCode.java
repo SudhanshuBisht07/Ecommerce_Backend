@@ -20,4 +20,5 @@ public class VerificationCode {
     private String otp;
     private String email;
     private LocalDateTime expiresAt;
+    private String purpose = "OTP";
 }

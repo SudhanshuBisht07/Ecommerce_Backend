@@ -30,12 +30,12 @@ public class User {
     private String email;
     private String fullName;
     private String mobile;
+    private String profileImage;
 
     private USER_ROLE role=USER_ROLE.ROLE_CUSTOMER;
 
     @OneToMany(fetch = FetchType.LAZY,
-            cascade = CascadeType.ALL,
-            orphanRemoval = true)
+            cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private Set<Address> addresses = new HashSet<>();
 

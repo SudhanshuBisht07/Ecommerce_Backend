@@ -1,5 +1,6 @@
 package com.easymart.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,8 +26,30 @@ public class Coupon {
     private LocalDate validityStartDate;
     private LocalDate validityEndDate;
     private BigDecimal minimumOrderValue;
-    private boolean isActive=true;
+
+    // Jackson strips the "is" prefix from boolean accessors (isActive() ->
+    // JSON key "active", setActive() -> JSON key "active" too), which
+    // desynced this from the frontend's `isActive` field in BOTH directions:
+    // reads came back as "active" (so `coupon.isActive` was always
+    // undefined), and writes from the admin toggle's `{ isActive: ... }`
+    // payload weren't binding to this field at all. Both accessors are
+    // pinned to the "isActive" JSON key explicitly; the Java method names
+    // (isActive()/setActive()) are kept as-is since other services call them.
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private boolean isActive = true;
+
     @ManyToMany(mappedBy = "usedCoupons")
     private Set<User> usedByUsers =new HashSet<>();
+
+    @JsonProperty("isActive")
+    public boolean isActive() {
+        return isActive;
+    }
+
+    @JsonProperty("isActive")
+    public void setActive(boolean isActive) {
+        this.isActive = isActive;
+    }
 
 }

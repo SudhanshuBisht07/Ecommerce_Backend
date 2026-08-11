@@ -2,10 +2,13 @@ package com.easymart.controller;
 
 import com.easymart.domain.PaymentStatus;
 import com.easymart.model.*;
+import com.easymart.request.CreateReturnRequest;
 import com.easymart.response.PaymentLinkResponse;
 import com.easymart.service.*;
 import com.razorpay.PaymentLink;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +30,10 @@ public class OrderController {
     private final SellerService sellerService;
     private final SellerReportService sellerReportService;
     private final PaymentService paymentService;
+    private final ReturnRequestService returnRequestService;
 
+    @Value("${frontend.base-url}")
+    private String frontendBaseUrl;
 
     @Transactional
     @PostMapping
@@ -47,6 +53,32 @@ public class OrderController {
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValue();
+
+        // A coupon (e.g. a 100%-off code) can bring the payable amount to
+        // zero. Razorpay can't create a ₹0 payment link, and there's nothing
+        // to actually charge, so mark the order paid directly and skip the
+        // Razorpay round trip instead of sending the user into a payment
+        // flow that would fail.
+        if (amountInPaise <= 0) {
+            paymentOrder.setStatus(com.easymart.domain.PaymentOrderStatus.SUCCESS);
+            for (Order order : orders) {
+                order.setPaymentStatus(PaymentStatus.COMPLETED);
+                order.setOrderStatus(com.easymart.domain.OrderStatus.PLACED);
+                // No Razorpay round trip happens for a fully-covered order,
+                // so there's no real payment id/link — label it clearly
+                // instead of leaving the order details page blank.
+                order.getPaymentDetails().setPaymentId("FREE_ORDER");
+                order.getPaymentDetails().setStatus(PaymentStatus.COMPLETED);
+            }
+            orderService.saveAll(orders);
+            paymentService.updatePaymentOrder(paymentOrder);
+            paymentService.finalizeOrderCompletion(paymentOrder);
+
+            paymentLinkResponse.setPayment_link_url(frontendBaseUrl + "/orders");
+            paymentLinkResponse.setPayment_link_id(null);
+            return new ResponseEntity<>(paymentLinkResponse, HttpStatus.OK);
+        }
+
         PaymentLink payment=paymentService.createRazorpayPaymentLink(user, amountInPaise, paymentOrder.getId());
         String paymentUrl=payment.get("short_url");
         String paymentUrlId=payment.get("id");
@@ -75,7 +107,7 @@ public class OrderController {
         if (!order.getUser().getId().equals(user.getId())) {
             throw new Exception("You don't have access to this order");
         }
-        return new ResponseEntity<>(order, HttpStatus.ACCEPTED);
+        return new ResponseEntity<>(order, HttpStatus.OK);
     }
     @GetMapping("/item/{orderItemId}")
     public ResponseEntity<OrderItem> getOrderItemById(
@@ -107,10 +139,42 @@ public class OrderController {
             sellerReport.setTotalRefunds(sellerReport.getTotalRefunds().add(order.getTotalSellingPrice()));
             sellerReport.setTotalEarnings(
                     sellerReport.getTotalEarnings().subtract(order.getTotalSellingPrice()));
+            sellerReport.setTotalSales(
+                    sellerReport.getTotalSales().subtract(order.getTotalSellingPrice()));
+
+            BigDecimal orderProfit = BigDecimal.ZERO;
+            for (OrderItem item : order.getOrderItems()) {
+                BigDecimal wholesalePrice = item.getWholesalePrice() != null
+                        ? item.getWholesalePrice()
+                        : BigDecimal.ZERO;
+                BigDecimal profitPerUnit = item.getSellingPrice().subtract(wholesalePrice);
+                orderProfit = orderProfit.add(profitPerUnit.multiply(BigDecimal.valueOf(item.getQuantity())));
+            }
+            sellerReport.setNetEarnings(sellerReport.getNetEarnings().subtract(orderProfit));
         }
         sellerReportService.updateSellerReport(sellerReport);
 
         return ResponseEntity.ok(order);
+    }
+
+    @PostMapping("/{orderId}/return")
+    public ResponseEntity<ReturnRequest> createReturnRequestHandler(
+            @PathVariable Long orderId,
+            @Valid @RequestBody CreateReturnRequest request,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.findUserByJwtToken(jwt);
+        ReturnRequest returnRequest = returnRequestService.createReturnRequest(
+                orderId, request.getType(), request.getReason(), user);
+        return new ResponseEntity<>(returnRequest, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/{orderId}/return")
+    public ResponseEntity<ReturnRequest> getReturnRequestHandler(
+            @PathVariable Long orderId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.findUserByJwtToken(jwt);
+        ReturnRequest returnRequest = returnRequestService.getReturnRequestByOrderId(orderId, user);
+        return ResponseEntity.ok(returnRequest);
     }
 
 }

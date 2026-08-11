@@ -13,5 +13,6 @@ public interface CouponService {
     Coupon createCoupon(Coupon coupon);
     List<Coupon> findAllCoupons();
     void deleteCoupon(Long id) throws Exception;
+    Coupon updateCouponStatus(Long id, boolean isActive) throws Exception;
 
 }

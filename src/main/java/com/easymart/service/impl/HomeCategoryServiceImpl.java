@@ -22,10 +22,7 @@ public class HomeCategoryServiceImpl implements HomeCategoryService {
 
     @Override
     public List<HomeCategory> createCategories(List<HomeCategory> homeCategories) {
-
-        if(homeCategoryRepository.findAll().isEmpty())
-            return homeCategoryRepository.saveAll(homeCategories);
-        return homeCategoryRepository.findAll();
+        return homeCategoryRepository.saveAll(homeCategories);
     }
 
     @Override

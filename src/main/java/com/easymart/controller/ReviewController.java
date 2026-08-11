@@ -5,9 +5,11 @@ import com.easymart.model.Review;
 import com.easymart.model.User;
 import com.easymart.request.CreateReviewRequest;
 import com.easymart.response.ApiResponse;
+import com.easymart.response.ReviewEligibilityResponse;
 import com.easymart.service.ProductService;
 import com.easymart.service.ReviewService;
 import com.easymart.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,9 +31,22 @@ public class ReviewController {
         List<Review> reviews=reviewService.getReviewByProductId(productId);
         return ResponseEntity.ok(reviews);
     }
+
+    // Lets the frontend decide whether to show "Write a review" at all,
+    // without exposing purchase history for other users' products.
+    @GetMapping("/products/{productId}/reviews/eligibility")
+    public ResponseEntity<ReviewEligibilityResponse> getReviewEligibility(
+            @PathVariable Long productId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user=userService.findUserByJwtToken(jwt);
+        boolean hasPurchased = reviewService.hasPurchased(user.getId(), productId);
+        boolean hasReviewed = reviewService.hasReviewed(user.getId(), productId);
+        return ResponseEntity.ok(new ReviewEligibilityResponse(hasPurchased, hasReviewed));
+    }
+
     @PostMapping("/products/{productId}/reviews")
     public ResponseEntity<Review> writeReview(
-            @RequestBody CreateReviewRequest request,
+            @Valid @RequestBody CreateReviewRequest request,
             @PathVariable Long productId,
             @RequestHeader("Authorization")String jwt)throws Exception{
         User user=userService.findUserByJwtToken(jwt);
@@ -41,7 +56,7 @@ public class ReviewController {
     }
     @PatchMapping("/reviews/{reviewId}")
     public ResponseEntity<Review> updateReview(
-            @RequestBody CreateReviewRequest request,
+            @Valid @RequestBody CreateReviewRequest request,
             @PathVariable Long reviewId,
             @RequestHeader("Authorization")String jwt)throws Exception{
         User user= userService.findUserByJwtToken(jwt);

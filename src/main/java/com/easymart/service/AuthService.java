@@ -7,7 +7,7 @@ import com.easymart.request.SignupRequest;
 
 public interface AuthService {
 
-    void sentLoginOtp(String email, USER_ROLE role) throws Exception;
+    void sentLoginOtp(String email, USER_ROLE role, boolean isLogin) throws Exception;
     String createUser(SignupRequest req) throws Exception;
     AuthResponse signing(LoginRequest req);
 

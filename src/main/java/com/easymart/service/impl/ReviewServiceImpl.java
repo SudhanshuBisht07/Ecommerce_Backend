@@ -1,8 +1,10 @@
 package com.easymart.service.impl;
 
+import com.easymart.domain.OrderStatus;
 import com.easymart.model.Product;
 import com.easymart.model.Review;
 import com.easymart.model.User;
+import com.easymart.repository.OrderItemRepository;
 import com.easymart.repository.ProductRepository;
 import com.easymart.repository.ReviewRepository;
 import com.easymart.request.CreateReviewRequest;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 @Transactional
 @Service
@@ -19,7 +22,10 @@ public class ReviewServiceImpl implements ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final ProductRepository productRepository;
+    private final OrderItemRepository orderItemRepository;
 
+    private static final List<OrderStatus> NON_PURCHASE_STATUSES =
+            Arrays.asList(OrderStatus.PENDING, OrderStatus.CANCELLED);
 
     private void updateProductRating(Product product) {
         List<Review> allReviews = reviewRepository.findByProductId(product.getId());
@@ -31,8 +37,27 @@ public class ReviewServiceImpl implements ReviewService {
         product.setAvgRatings(avg);
         productRepository.save(product);
     }
+
     @Override
-    public Review createReview(CreateReviewRequest request, User user, Product product) {
+    public boolean hasPurchased(Long userId, Long productId) {
+        return orderItemRepository.existsByOrder_User_IdAndProduct_IdAndOrder_OrderStatusNotIn(
+                userId, productId, NON_PURCHASE_STATUSES);
+    }
+
+    @Override
+    public boolean hasReviewed(Long userId, Long productId) {
+        return reviewRepository.existsByUser_IdAndProduct_Id(userId, productId);
+    }
+
+    @Override
+    public Review createReview(CreateReviewRequest request, User user, Product product) throws Exception {
+        if (!hasPurchased(user.getId(), product.getId())) {
+            throw new Exception("Only customers who have purchased this product can review it");
+        }
+        if (hasReviewed(user.getId(), product.getId())) {
+            throw new Exception("You've already reviewed this product — edit your existing review instead");
+        }
+
         Review review=new Review();
         review.setUser(user);
         review.setProduct(product);

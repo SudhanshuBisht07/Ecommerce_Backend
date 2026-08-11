@@ -11,6 +11,7 @@ import com.easymart.service.CartItemService;
 import com.easymart.service.CartService;
 import com.easymart.service.ProductService;
 import com.easymart.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +35,7 @@ public class CartController {
     }
 
     @PutMapping("/add")
-    public ResponseEntity<CartItem> addItemToCart(@RequestBody AddItemRequest req, @RequestHeader("Authorization")String jwt) throws Exception {
+    public ResponseEntity<CartItem> addItemToCart(@Valid @RequestBody AddItemRequest req, @RequestHeader("Authorization")String jwt) throws Exception {
         User user=userService.findUserByJwtToken(jwt);
         Product product=productService.findProductById(req.getProductId());
 

@@ -5,8 +5,11 @@ import com.easymart.config.JwtProvider;
 import com.easymart.model.User;
 import com.easymart.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,5 +33,17 @@ public class UserServiceImpl implements UserService {
             throw new Exception("user not found with email- "+email);
         }
         return user;
+    }
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Override
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+    @Transactional
+    @Override
+    public User updateProfileImage(String jwt, String imageUrl) throws Exception {
+        User user = findUserByJwtToken(jwt);
+        user.setProfileImage(imageUrl);
+        return userRepository.save(user);
     }
 }

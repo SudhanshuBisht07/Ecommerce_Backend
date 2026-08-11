@@ -5,8 +5,11 @@ import com.easymart.exceptions.ProductException;
 import com.easymart.model.Category;
 import com.easymart.model.Product;
 import com.easymart.model.Seller;
+import com.easymart.repository.CartItemRepository;
 import com.easymart.repository.CategoryRepository;
+import com.easymart.repository.OrderItemRepository;
 import com.easymart.repository.ProductRepository;
+import com.easymart.repository.WishlistRepository;
 import com.easymart.request.CreateProductRequest;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
@@ -30,6 +33,9 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final CartItemRepository cartItemRepository;
+    private final WishlistRepository wishlistRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @Override
     public Product createProduct(CreateProductRequest req, Seller seller) {
@@ -41,27 +47,36 @@ public class ProductServiceImpl implements ProductService {
             category.setLevel(1);
             category1=categoryRepository.save(category);
         }
-        Category category2=categoryRepository.findByCategoryId(req.getCategory2());
-        if(category2==null){
-            Category category=new Category();
-            category.setCategoryId(req.getCategory2());
-            category.setName(req.getCategory2());
-            category.setLevel(2);
-            category.setParentCategory(category1);
-            category2=categoryRepository.save(category);
-        }
-        Category category3=categoryRepository.findByCategoryId(req.getCategory3());
-        if(category3==null){
-            Category category=new Category();
-            category.setCategoryId(req.getCategory3());
-            category.setName(req.getCategory3());
-            category.setLevel(3);
-            category.setParentCategory(category2);
-            category3=categoryRepository.save(category);
+        Category leafCategory = category1;
+
+        if(req.getCategory2()!=null && !req.getCategory2().isBlank()){
+            Category category2=categoryRepository.findByCategoryId(req.getCategory2());
+            if(category2==null){
+                Category category=new Category();
+                category.setCategoryId(req.getCategory2());
+                category.setName(req.getCategory2());
+                category.setLevel(2);
+                category.setParentCategory(category1);
+                category2=categoryRepository.save(category);
+            }
+            leafCategory = category2;
+
+            if(req.getCategory3()!=null && !req.getCategory3().isBlank()){
+                Category category3=categoryRepository.findByCategoryId(req.getCategory3());
+                if(category3==null){
+                    Category category=new Category();
+                    category.setCategoryId(req.getCategory3());
+                    category.setName(req.getCategory3());
+                    category.setLevel(3);
+                    category.setParentCategory(category2);
+                    category3=categoryRepository.save(category);
+                }
+                leafCategory = category3;
+            }
         }
         Product product= new Product();
         product.setSeller(seller);
-        product.setCategory(category3);
+        product.setCategory(leafCategory);
         product.setBrand(req.getBrand());
         product.setDescription(req.getDescription());
         product.setCreatedAt(LocalDateTime.now());
@@ -71,6 +86,7 @@ public class ProductServiceImpl implements ProductService {
         product.setSize(req.getSize());
         product.setSellingPrice(req.getSellingPrice());
         product.setMrpPrice(req.getMrpPrice());
+        product.setWholesalePrice(req.getWholesalePrice());
         product.setQuantity(req.getQuantity());
         int discountPercentage=calculateDiscountPercentage(req.getMrpPrice(), req.getSellingPrice());
         product.setDiscountPercent(discountPercentage);
@@ -90,8 +106,21 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void deleteProduct(Long productId)throws ProductException {
         Product product=findProductById(productId);
+
+        if (orderItemRepository.existsByProduct(product)) {
+            throw new ProductException("Cannot delete a product that has existing orders. Set its stock to 0 instead.");
+        }
+
+        cartItemRepository.deleteAll(cartItemRepository.findByProduct(product));
+
+        for (var wishlist : wishlistRepository.findByProductsContaining(product)) {
+            wishlist.getProducts().remove(product);
+            wishlistRepository.save(wishlist);
+        }
+
         productRepository.delete(product);
     }
 
@@ -108,12 +137,24 @@ public class ProductServiceImpl implements ProductService {
             existingProduct.setSellingPrice(product.getSellingPrice());
         if(product.getMrpPrice() != null)
             existingProduct.setMrpPrice(product.getMrpPrice());
+        if(product.getWholesalePrice() != null)
+            existingProduct.setWholesalePrice(product.getWholesalePrice());
         if(product.getColor() != null)
             existingProduct.setColor(product.getColor());
         if(product.getImages() != null)
             existingProduct.setImages(product.getImages());
         if(product.getSize() != null)
             existingProduct.setSize(product.getSize());
+        // quantity is a primitive on Product, so there's no null-check to gate
+        // it the way the other fields do — the PUT contract for this endpoint
+        // is that the caller sends the full desired quantity, not a partial patch.
+        existingProduct.setQuantity(product.getQuantity());
+        if(product.getCategory() != null && product.getCategory().getCategoryId() != null){
+            Category category = categoryRepository.findByCategoryId(product.getCategory().getCategoryId());
+            if(category != null){
+                existingProduct.setCategory(category);
+            }
+        }
         if (existingProduct.getMrpPrice() != null && existingProduct.getSellingPrice() != null) {
             if (existingProduct.getSellingPrice().compareTo(existingProduct.getMrpPrice()) > 0) {
                 throw new ProductException("Selling price cannot be greater than MRP price");

@@ -30,6 +30,9 @@ public class OrderServiceImpl implements OrderService {
         if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
             throw new Exception("Cart is empty");
         }
+        if (shippingAddress.getId() != null && !addressRepository.existsById(shippingAddress.getId())) {
+            shippingAddress.setId(null);
+        }
         Address address=addressRepository.save(shippingAddress);
         if(!user.getAddresses().contains(shippingAddress)){
             user.getAddresses().add(shippingAddress);
@@ -38,7 +41,23 @@ public class OrderServiceImpl implements OrderService {
         Map<Long, List<CartItem>> itemsBySeller=cart.getCartItems().stream()
                 .collect(Collectors.groupingBy(item->item.getProduct().getSeller().getId()));
         Set<Order> orders=new HashSet<>();
-        for(Map.Entry<Long, List<CartItem>> entry: itemsBySeller.entrySet()){
+
+        // The coupon discount lives on the Cart (cart.couponDiscount), not on
+        // individual CartItems, but an order is split one-per-seller. Without
+        // this, each seller's Order/PaymentOrder was built purely from
+        // CartItem.sellingPrice, silently dropping the coupon discount, so the
+        // amount actually charged via Razorpay didn't match the discounted
+        // total shown at checkout. Distribute it proportionally across sellers.
+        BigDecimal couponDiscount = cart.getCouponDiscount() != null ? cart.getCouponDiscount() : BigDecimal.ZERO;
+        BigDecimal cartPreCouponTotal = cart.getCartItems().stream()
+                .map(CartItem::getSellingPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<Map.Entry<Long, List<CartItem>>> sellerEntries = new ArrayList<>(itemsBySeller.entrySet());
+        BigDecimal couponDistributed = BigDecimal.ZERO;
+
+        for(int i = 0; i < sellerEntries.size(); i++){
+            Map.Entry<Long, List<CartItem>> entry = sellerEntries.get(i);
             Long sellerId= entry.getKey();
             List<CartItem> items=entry.getValue();
             BigDecimal totalOrderPrice = items.stream()
@@ -48,6 +67,22 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal totalMrpPrice = items.stream()
                     .map(CartItem::getMrpPrice)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal sellerCouponShare;
+            if (couponDiscount.compareTo(BigDecimal.ZERO) == 0) {
+                sellerCouponShare = BigDecimal.ZERO;
+            } else if (i == sellerEntries.size() - 1) {
+                // Last seller absorbs any rounding remainder so the sum of
+                // every order's total exactly matches the cart's discounted total.
+                sellerCouponShare = couponDiscount.subtract(couponDistributed);
+            } else {
+                sellerCouponShare = couponDiscount
+                        .multiply(totalOrderPrice)
+                        .divide(cartPreCouponTotal, 2, java.math.RoundingMode.HALF_UP);
+                couponDistributed = couponDistributed.add(sellerCouponShare);
+            }
+
+            totalOrderPrice = totalOrderPrice.subtract(sellerCouponShare);
 
             int totalItem = items.stream().mapToInt(CartItem::getQuantity).sum();
 
@@ -85,6 +120,7 @@ public class OrderServiceImpl implements OrderService {
                 orderItem.setSize(item.getSize());
                 orderItem.setUserId(item.getUserId());
                 orderItem.setSellingPrice(item.getSellingPrice());
+                orderItem.setWholesalePrice(item.getProduct().getWholesalePrice());
                 orderItemRepository.save(orderItem);
             }
         }
@@ -102,17 +138,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public Order findOrderById(Long id) throws Exception {
-        return orderRepository.findById(id).orElseThrow(()->new Exception("order not found.."));
+        return orderRepository.findById(id).orElseThrow(()->new Exception("Order not found with id " + id));
     }
 
     @Override
     public List<Order> userOrderHistory(Long userId) {
-        return orderRepository.findByUserId(userId);
+        return orderRepository.findByUserIdOrderByOrderDateDesc(userId);
     }
 
     @Override
     public List<Order> sellersOrder(Long sellerId) {
-        return orderRepository.findBySellerId(sellerId);
+        return orderRepository.findBySellerIdOrderByOrderDateDesc(sellerId);
     }
 
     @Override
@@ -150,5 +186,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderItem getOrderItemById(Long id) throws Exception {
         return orderItemRepository.findById(id).orElseThrow(()->new Exception("order item does not exist"));
+    }
+
+    @Override
+    public void saveAll(Set<Order> orders) {
+        orderRepository.saveAll(orders);
     }
 }

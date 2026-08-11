@@ -47,6 +47,9 @@ public class SellerServiceImpl implements SellerService {
         if(sellerExist!=null){
             throw new Exception("seller already exist, use different email.");
         }
+        if(seller.getPickupAddress()==null){
+            throw new Exception("pickup address is required");
+        }
         Address savedAddress=addressRepository.save(seller.getPickupAddress());
         Seller newSeller=new Seller();
         newSeller.setEmail(seller.getEmail());
@@ -141,15 +144,47 @@ public class SellerServiceImpl implements SellerService {
     @Override
     public Seller verifyEmail(String email, String otp) throws SellerException {
         Seller seller=getSellerByEmail(email);
-        VerificationCode verificationCode = verificationCodeRepository.findByEmail(email);
+
+        VerificationCode verificationCode = verificationCodeRepository.findByEmailAndPurpose(email, "EMAIL_VERIFICATION");
         if(verificationCode == null || !verificationCode.getOtp().equals(otp)){
             throw new SellerException("Invalid OTP");
         }
         if(verificationCode.getExpiresAt().isBefore(LocalDateTime.now())){
             throw new SellerException("OTP has expired");
         }
+
+        boolean alreadyVerified = seller.isEmailVerified();
+
         seller.setEmailVerified(true);
-        verificationCodeRepository.delete(verificationCode); // clean up after use
+        // Email verification is the only gate this demo app has — there's
+        // no separate manual business-approval step implemented anywhere,
+        // so requiring "admin intervention" after this would just leave
+        // every seller stuck in PENDING_VERIFICATION forever. Activate the
+        // account as soon as the email is confirmed.
+        if (seller.getAccountStatus() == AccountStatus.PENDING_VERIFICATION) {
+            seller.setAccountStatus(AccountStatus.ACTIVE);
+        }
+
+        if (!alreadyVerified) {
+            // Deliberately not deleting the VerificationCode row outright —
+            // the controller's findByOtp(otp) lookup runs before this method
+            // is even called, so an immediate duplicate confirmation (React
+            // StrictMode double-invoking the effect, or a page refresh)
+            // would otherwise fail there with "invalid OTP" even though the
+            // first call had already succeeded. Instead, shrink its expiry
+            // to a short grace window on this first-time transition only
+            // (not on every later retry, or a link that's repeatedly
+            // pinged would never actually expire): near-simultaneous
+            // retries within the next few minutes still succeed, but a
+            // link that's copied and reused later — a real concern, since
+            // this endpoint is unauthenticated by design and would
+            // otherwise stay valid for the full original 24h registration
+            // window even after already being used — stops working shortly
+            // after, like a normal one-time link.
+            verificationCode.setExpiresAt(LocalDateTime.now().plusMinutes(5));
+            verificationCodeRepository.save(verificationCode);
+        }
+
         return sellerRepository.save(seller);
     }
 

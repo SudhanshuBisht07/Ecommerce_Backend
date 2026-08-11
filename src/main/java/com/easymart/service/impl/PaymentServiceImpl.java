@@ -8,6 +8,9 @@ import com.easymart.repository.OrderRepository;
 import com.easymart.repository.PaymentOrderRepository;
 import com.easymart.repository.ProductRepository;
 import com.easymart.service.PaymentService;
+import com.easymart.service.SellerReportService;
+import com.easymart.service.SellerService;
+import com.easymart.service.TransactionService;
 import com.razorpay.Payment;
 import com.razorpay.PaymentLink;
 import com.razorpay.RazorpayClient;
@@ -27,6 +30,9 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentOrderRepository paymentOrderRepository;
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final SellerService sellerService;
+    private final SellerReportService sellerReportService;
+    private final TransactionService transactionService;
 
     @Value("${razorpay.api.key}")
     private String apiKey;
@@ -64,6 +70,16 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Boolean proceedPaymentOrder(PaymentOrder paymentOrder, String paymentId, String paymentLinkId) throws RazorpayException, Exception {
+        // Idempotency guard: PaymentSuccessPage's effect can fire twice for
+        // the same payment (React StrictMode double-invokes effects in dev,
+        // and a page refresh re-runs it too). Previously a second call saw a
+        // non-PENDING status and fell through to `return false`, so a
+        // payment that had *already succeeded* on the first call would show
+        // the "couldn't confirm this payment" error on the second. Treat an
+        // already-SUCCESS payment order as still successful.
+        if (paymentOrder.getStatus().equals(PaymentOrderStatus.SUCCESS)) {
+            return true;
+        }
         if(paymentOrder.getStatus().equals(PaymentOrderStatus.PENDING)){
             RazorpayClient razorpayClient=new RazorpayClient(apiKey, apiSecret);
             Payment payment=razorpayClient.payments.fetch(paymentId);
@@ -73,10 +89,21 @@ public class PaymentServiceImpl implements PaymentService {
                 for(Order order:orders){
                     order.setPaymentStatus(PaymentStatus.COMPLETED);
                     order.setOrderStatus(OrderStatus.PLACED);
+                    // Was never being populated at all, so the order
+                    // details page always showed blank "Payment ID" and
+                    // "Razorpay Link" fields even for completed orders.
+                    order.getPaymentDetails().setPaymentId(paymentId);
+                    order.getPaymentDetails().setRazorpayPaymentLinkId(paymentLinkId);
+                    order.getPaymentDetails().setStatus(PaymentStatus.COMPLETED);
                     orderRepository.save(order);
                 }
                 paymentOrder.setStatus(PaymentOrderStatus.SUCCESS);
                 paymentOrderRepository.save(paymentOrder);
+                // Only runs on the actual first-time transition into SUCCESS
+                // above (the idempotency guard at the top returns early on
+                // any later re-confirmation), so transactions/seller reports
+                // are never double-counted.
+                finalizeOrderCompletion(paymentOrder);
                 return true;
             }
             paymentOrder.setStatus(PaymentOrderStatus.FAILED);
@@ -119,5 +146,33 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentOrder updatePaymentOrder(PaymentOrder paymentOrder) {
         return paymentOrderRepository.save(paymentOrder);
+    }
+
+    @Override
+    public void finalizeOrderCompletion(PaymentOrder paymentOrder) throws Exception {
+        for (Order order : paymentOrder.getOrders()) {
+            transactionService.createTransaction(order);
+            Seller seller = sellerService.getSellerById(order.getSellerId());
+            SellerReport report = sellerReportService.getSellerReport(seller);
+
+            BigDecimal orderProfit = BigDecimal.ZERO;
+            for (OrderItem item : order.getOrderItems()) {
+                BigDecimal wholesalePrice = item.getWholesalePrice() != null
+                        ? item.getWholesalePrice()
+                        : BigDecimal.ZERO;
+                // item.getSellingPrice() is already a line total
+                // (unitPrice * quantity), while wholesalePrice is
+                // per-unit — multiplying by quantity again here roughly
+                // squared the profit for any item with quantity > 1.
+                BigDecimal itemWholesaleTotal = wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity()));
+                orderProfit = orderProfit.add(item.getSellingPrice().subtract(itemWholesaleTotal));
+            }
+
+            report.setTotalOrders(report.getTotalOrders() + 1);
+            report.setTotalEarnings(report.getTotalEarnings().add(order.getTotalSellingPrice()));
+            report.setTotalSales(report.getTotalSales().add(order.getTotalSellingPrice()));
+            report.setNetEarnings(report.getNetEarnings().add(orderProfit));
+            sellerReportService.updateSellerReport(report);
+        }
     }
 }

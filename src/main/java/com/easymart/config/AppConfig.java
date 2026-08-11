@@ -35,6 +35,7 @@ public class AppConfig {
                         .requestMatchers("/products/**").permitAll()
                         .requestMatchers("/sellers/login").permitAll()
                         .requestMatchers("/sellers/verify/**").permitAll()
+                        .requestMatchers("/api/categories/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/categories/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/sellers").permitAll()
                         .requestMatchers("/sellers/**").authenticated()
