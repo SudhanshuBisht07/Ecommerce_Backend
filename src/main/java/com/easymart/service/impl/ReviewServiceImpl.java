@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 @Transactional
 @Service
@@ -40,8 +39,11 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     public boolean hasPurchased(Long userId, Long productId) {
-        return orderItemRepository.existsByOrder_User_IdAndProduct_IdAndOrder_OrderStatusNotIn(
-                userId, productId, NON_PURCHASE_STATUSES);
+        // Reviewing requires the order to have actually been delivered,
+        // not just placed/paid — a customer shouldn't be able to review a
+        // product they haven't received yet.
+        return orderItemRepository.existsByOrder_User_IdAndProduct_IdAndOrder_OrderStatus(
+                userId, productId, OrderStatus.DELIVERED);
     }
 
     @Override
@@ -52,7 +54,7 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     public Review createReview(CreateReviewRequest request, User user, Product product) throws Exception {
         if (!hasPurchased(user.getId(), product.getId())) {
-            throw new Exception("Only customers who have purchased this product can review it");
+            throw new Exception("You can only review a product after your order for it has been delivered");
         }
         if (hasReviewed(user.getId(), product.getId())) {
             throw new Exception("You've already reviewed this product — edit your existing review instead");
