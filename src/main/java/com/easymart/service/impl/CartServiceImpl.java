@@ -100,6 +100,13 @@ public class CartServiceImpl implements CartService {
         BigDecimal calculatedDiscount = totalPrice.compareTo(BigDecimal.ZERO) == 0
                 ? BigDecimal.ZERO
                 : totalPrice.subtract(totalDiscountedPrice);
+
+        // A coupon's discount was captured as a flat amount at the moment it
+        // was applied. If the cart total has since changed (an item was
+        // removed/its quantity dropped), that flat amount is stale — and if
+        // the cart no longer meets the coupon's minimum order value, it
+        // shouldn't still be "applied" at all. Re-validate every time the
+        // cart is recomputed instead of blindly reusing what was stored.
         if (cart.getCouponCode() != null) {
             Coupon coupon = couponRepository.findByCode(cart.getCouponCode());
             boolean stillEligible = coupon != null

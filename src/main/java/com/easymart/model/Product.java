@@ -54,7 +54,14 @@ public class Product {
     // Curated by admin (like HomeCategory/Deal tiles) — controls the
     // "Featured Products" homepage carousel. Defaults to false so it never
     // silently shows a seller's product without admin sign-off.
-    @Column(nullable = false)
+    //
+    // columnDefinition matters here: on a NON-EMPTY table, Postgres refuses
+    // "ADD COLUMN ... NOT NULL" with no default (existing rows would violate
+    // it) — Hibernate's ddl-auto=update just logs that failure and moves on,
+    // so the column silently never gets created. The Java-side `= false`
+    // only affects new objects in memory, not the ALTER TABLE Hibernate
+    // generates, hence the explicit DB default below.
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean featured = false;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
