@@ -142,14 +142,20 @@ public class OrderController {
             sellerReport.setTotalSales(
                     sellerReport.getTotalSales().subtract(order.getTotalSellingPrice()));
 
-            BigDecimal orderProfit = BigDecimal.ZERO;
+            // order.getTotalSellingPrice() is the coupon-adjusted total that
+            // was actually added to earnings/sales above; OrderItem.sellingPrice
+            // is a pre-coupon LINE TOTAL (not per-unit), so subtracting a
+            // per-unit wholesalePrice from it and then multiplying by
+            // quantity again both ignored the coupon and double-counted
+            // quantity.
+            BigDecimal totalWholesaleCost = BigDecimal.ZERO;
             for (OrderItem item : order.getOrderItems()) {
                 BigDecimal wholesalePrice = item.getWholesalePrice() != null
                         ? item.getWholesalePrice()
                         : BigDecimal.ZERO;
-                BigDecimal profitPerUnit = item.getSellingPrice().subtract(wholesalePrice);
-                orderProfit = orderProfit.add(profitPerUnit.multiply(BigDecimal.valueOf(item.getQuantity())));
+                totalWholesaleCost = totalWholesaleCost.add(wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity())));
             }
+            BigDecimal orderProfit = order.getTotalSellingPrice().subtract(totalWholesaleCost);
             sellerReport.setNetEarnings(sellerReport.getNetEarnings().subtract(orderProfit));
         }
         sellerReportService.updateSellerReport(sellerReport);

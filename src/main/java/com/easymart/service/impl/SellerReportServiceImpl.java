@@ -70,21 +70,20 @@ public class SellerReportServiceImpl implements SellerReportService {
             SalesDataPoint point = byDate.get(orderDate);
             if (point == null) continue;
 
-            BigDecimal orderProfit = BigDecimal.ZERO;
+            // order.getTotalSellingPrice() is the coupon-adjusted total for
+            // this order; OrderItem.sellingPrice is the pre-coupon line
+            // price and was never adjusted when a coupon was applied at
+            // checkout, so deriving profit from the order total instead
+            // (rather than re-summing items) keeps this in sync with the
+            // revenue figure on the same line below.
+            BigDecimal totalWholesaleCost = BigDecimal.ZERO;
             for (OrderItem item : order.getOrderItems()) {
                 BigDecimal wholesalePrice = item.getWholesalePrice() != null
                         ? item.getWholesalePrice()
                         : BigDecimal.ZERO;
-                // item.getSellingPrice() is already a line total
-                // (unitPrice * quantity, set that way when the cart item
-                // was created), while wholesalePrice is per-unit. The old
-                // code subtracted a per-unit wholesale price from that line
-                // total and then multiplied by quantity *again*, roughly
-                // squaring the profit for any item with quantity > 1 —
-                // this is why profit could end up higher than revenue.
-                BigDecimal itemWholesaleTotal = wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity()));
-                orderProfit = orderProfit.add(item.getSellingPrice().subtract(itemWholesaleTotal));
+                totalWholesaleCost = totalWholesaleCost.add(wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity())));
             }
+            BigDecimal orderProfit = order.getTotalSellingPrice().subtract(totalWholesaleCost);
 
             point.setRevenue(point.getRevenue().add(order.getTotalSellingPrice()));
             point.setProfit(point.getProfit().add(orderProfit));

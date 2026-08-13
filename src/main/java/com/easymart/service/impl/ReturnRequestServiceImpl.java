@@ -134,14 +134,19 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
     }
 
     private void reverseOrderFromSellerReport(Order order, Seller seller) {
-        BigDecimal orderProfit = BigDecimal.ZERO;
+        // Mirrors the fix in PaymentServiceImpl.finalizeOrderCompletion:
+        // order.getTotalSellingPrice() is the coupon-adjusted amount that
+        // was actually added to the report when this order completed;
+        // OrderItem.sellingPrice is the pre-coupon line price and would
+        // overstate the profit being reversed here.
+        BigDecimal totalWholesaleCost = BigDecimal.ZERO;
         for (OrderItem item : order.getOrderItems()) {
             BigDecimal wholesalePrice = item.getWholesalePrice() != null
                     ? item.getWholesalePrice()
                     : BigDecimal.ZERO;
-            BigDecimal itemWholesaleTotal = wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity()));
-            orderProfit = orderProfit.add(item.getSellingPrice().subtract(itemWholesaleTotal));
+            totalWholesaleCost = totalWholesaleCost.add(wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity())));
         }
+        BigDecimal orderProfit = order.getTotalSellingPrice().subtract(totalWholesaleCost);
 
         SellerReport report = sellerReportService.getSellerReport(seller);
         report.setTotalOrders(Math.max(0, report.getTotalOrders() - 1));

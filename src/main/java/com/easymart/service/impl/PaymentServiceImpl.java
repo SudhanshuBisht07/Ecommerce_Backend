@@ -155,18 +155,26 @@ public class PaymentServiceImpl implements PaymentService {
             Seller seller = sellerService.getSellerById(order.getSellerId());
             SellerReport report = sellerReportService.getSellerReport(seller);
 
-            BigDecimal orderProfit = BigDecimal.ZERO;
+            // order.getTotalSellingPrice() is the actual, coupon-adjusted
+            // amount for this order (set correctly in
+            // OrderServiceImpl.createOrder). Each OrderItem.sellingPrice,
+            // by contrast, is the PRE-COUPON line price — the coupon
+            // discount was only ever subtracted at the order's aggregate
+            // level, never redistributed back onto individual items. Summing
+            // profit from item.getSellingPrice() therefore overstated profit
+            // by the coupon amount whenever one was applied. Deriving from
+            // the order total instead nets that out correctly.
+            BigDecimal totalWholesaleCost = BigDecimal.ZERO;
             for (OrderItem item : order.getOrderItems()) {
                 BigDecimal wholesalePrice = item.getWholesalePrice() != null
                         ? item.getWholesalePrice()
                         : BigDecimal.ZERO;
-                // item.getSellingPrice() is already a line total
-                // (unitPrice * quantity), while wholesalePrice is
-                // per-unit — multiplying by quantity again here roughly
-                // squared the profit for any item with quantity > 1.
-                BigDecimal itemWholesaleTotal = wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity()));
-                orderProfit = orderProfit.add(item.getSellingPrice().subtract(itemWholesaleTotal));
+                // wholesalePrice is per-unit; sellingPrice line totals
+                // (and thus order.getTotalSellingPrice()) are already
+                // quantity-multiplied, so match that here.
+                totalWholesaleCost = totalWholesaleCost.add(wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity())));
             }
+            BigDecimal orderProfit = order.getTotalSellingPrice().subtract(totalWholesaleCost);
 
             report.setTotalOrders(report.getTotalOrders() + 1);
             report.setTotalEarnings(report.getTotalEarnings().add(order.getTotalSellingPrice()));
