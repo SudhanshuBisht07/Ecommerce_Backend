@@ -94,6 +94,21 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
 
         ReturnRequest saved = returnRequestRepository.save(request);
 
+        // Approving a RETURN should show up wherever the order itself is
+        // listed (customer "My Orders", seller "Orders") instead of that
+        // order sitting at "DELIVERED" forever even after it's been
+        // returned. EXCHANGE keeps the order as-is — a replacement item
+        // ships out, it isn't "returned". Guarded on previousStatus so
+        // re-saving an already-approved/completed request doesn't redo this.
+        if (status == ReturnStatus.APPROVED
+                && previousStatus != ReturnStatus.APPROVED
+                && previousStatus != ReturnStatus.COMPLETED
+                && request.getType() == ReturnType.RETURN) {
+            Order order = request.getOrder();
+            order.setOrderStatus(OrderStatus.RETURNED);
+            orderRepository.save(order);
+        }
+
         // A completed RETURN undoes the sale — the seller dashboard
         // (profit/sales/order count) needs to reflect that instead of still
         // counting it as a completed sale. EXCHANGE keeps the sale (a
@@ -104,6 +119,15 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
                 && previousStatus != ReturnStatus.COMPLETED
                 && request.getType() == ReturnType.RETURN) {
             reverseOrderFromSellerReport(request.getOrder(), seller);
+
+            // COMPLETED can be reached directly from PENDING in principle,
+            // so make sure the order is marked RETURNED here too rather than
+            // only on the APPROVED transition above.
+            Order order = request.getOrder();
+            if (order.getOrderStatus() != OrderStatus.RETURNED) {
+                order.setOrderStatus(OrderStatus.RETURNED);
+                orderRepository.save(order);
+            }
         }
 
         return saved;
