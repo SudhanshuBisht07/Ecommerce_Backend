@@ -20,6 +20,19 @@ public class AdminCouponController {
     private final UserService userService;
     private final CartService cartService;
 
+    // Powers the checkout coupon picker. Authorization is optional here (unlike
+    // /apply) so it degrades gracefully if ever called before login; when a
+    // token is present we use it to hide coupons the user already redeemed.
+    @GetMapping("/available")
+    public ResponseEntity<List<Coupon>> getAvailableCoupons(
+            @RequestHeader(value = "Authorization", required = false) String jwt) throws Exception {
+        User user = null;
+        if (jwt != null && !jwt.isBlank()) {
+            user = userService.findUserByJwtToken(jwt);
+        }
+        return ResponseEntity.ok(couponService.getAvailableCoupons(user));
+    }
+
     @PostMapping("/apply")
     public ResponseEntity<Cart> applyCoupon(
             @RequestParam boolean apply,

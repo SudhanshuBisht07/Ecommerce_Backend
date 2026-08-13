@@ -104,6 +104,17 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    public List<Coupon> getAvailableCoupons(User user) {
+        LocalDate today = LocalDate.now();
+        return couponRepository.findAll().stream()
+                .filter(Coupon::isActive)
+                .filter(c -> c.getValidityStartDate() == null || !today.isBefore(c.getValidityStartDate()))
+                .filter(c -> c.getValidityEndDate() == null || !today.isAfter(c.getValidityEndDate()))
+                .filter(c -> user == null || !user.getUsedCoupons().contains(c))
+                .toList();
+    }
+
+    @Override
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public void deleteCoupon(Long id) throws Exception {
         Coupon coupon=findCouponById(id);

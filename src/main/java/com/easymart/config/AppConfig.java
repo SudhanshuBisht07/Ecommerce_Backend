@@ -49,6 +49,7 @@ public class AppConfig {
                         .requestMatchers("/api/seller/*/status/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/coupons/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/coupons/available").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/home/categories").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/home/categories").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/wishlist/**").authenticated()

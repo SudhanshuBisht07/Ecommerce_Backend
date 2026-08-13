@@ -81,7 +81,7 @@ public class SellerProductController {
         }
     }
     @PutMapping("/{productId}")
-    public ResponseEntity<?> updateProduct(@PathVariable Long productId, @RequestBody Product product,@RequestHeader("Authorization") String jwt){
+    public ResponseEntity<?> updateProduct(@PathVariable Long productId, @RequestBody CreateProductRequest product,@RequestHeader("Authorization") String jwt){
         try{
             Seller seller = sellerService.getSellerProfile(jwt);
             Product existingProduct = productService.findProductById(productId);

@@ -38,6 +38,6 @@ public class CreateProductRequest {
 
     private String category2;
     private String category3;
-    private String size;
+    private List<String> sizes;
 
 }

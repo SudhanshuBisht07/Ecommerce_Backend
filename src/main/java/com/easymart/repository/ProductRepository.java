@@ -11,6 +11,8 @@ import java.util.List;
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
     List<Product> findBySeller_Id(Long sellerId);
 
+    List<Product> findByFeaturedTrueOrderByCreatedAtDesc();
+
 
     //for searching the products based on keywords in name, description or category
     @Query("SELECT p FROM Product p WHERE " +

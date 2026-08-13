@@ -2,15 +2,19 @@ package com.easymart.service.impl;
 
 import com.easymart.model.Cart;
 import com.easymart.model.CartItem;
+import com.easymart.model.Coupon;
 import com.easymart.model.Product;
 import com.easymart.model.User;
 import com.easymart.repository.CartItemRepository;
 import com.easymart.repository.CartRepository;
+import com.easymart.repository.CouponRepository;
+import com.easymart.repository.UserRepository;
 import com.easymart.service.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 @RequiredArgsConstructor
@@ -18,9 +22,23 @@ public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
+    private final CouponRepository couponRepository;
+    private final UserRepository userRepository;
 
     @Override
     public CartItem addCartItem(User user, Product product, String size, int quantity) {
+        // A product with sizes defined has no single "default" variant —
+        // the customer must pick one of them. Products with no sizes at all
+        // (sizes list empty) are unaffected.
+        if (product.getSizes() != null && !product.getSizes().isEmpty()) {
+            if (size == null || size.isBlank()) {
+                throw new IllegalArgumentException("Please select a size for: " + product.getTitle());
+            }
+            if (!product.getSizes().contains(size)) {
+                throw new IllegalArgumentException("Selected size is not available for: " + product.getTitle());
+            }
+        }
+
         Cart cart=findUserCart(user);
         CartItem isPresent=cartItemRepository.findByCartAndProductAndSize(cart, product, size);
 
@@ -82,10 +100,30 @@ public class CartServiceImpl implements CartService {
         BigDecimal calculatedDiscount = totalPrice.compareTo(BigDecimal.ZERO) == 0
                 ? BigDecimal.ZERO
                 : totalPrice.subtract(totalDiscountedPrice);
+        if (cart.getCouponCode() != null) {
+            Coupon coupon = couponRepository.findByCode(cart.getCouponCode());
+            boolean stillEligible = coupon != null
+                    && totalDiscountedPrice.compareTo(coupon.getMinimumOrderValue()) >= 0;
 
-        if (cart.getCouponCode() != null && cart.getCouponDiscount() != null) {
-            cart.setTotalSellingPrice(totalDiscountedPrice.subtract(cart.getCouponDiscount()));
-            cart.setDiscount(calculatedDiscount.add(cart.getCouponDiscount()));
+            if (!stillEligible) {
+                if (coupon != null && cart.getUser() != null) {
+                    User cartOwner = cart.getUser();
+                    if (cartOwner.getUsedCoupons().remove(coupon)) {
+                        userRepository.save(cartOwner);
+                    }
+                }
+                cart.setCouponCode(null);
+                cart.setCouponDiscount(null);
+                cart.setTotalSellingPrice(totalDiscountedPrice);
+                cart.setDiscount(calculatedDiscount);
+            } else {
+                BigDecimal recalculatedCouponDiscount = totalDiscountedPrice
+                        .multiply(coupon.getDiscountPercentage())
+                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                cart.setCouponDiscount(recalculatedCouponDiscount);
+                cart.setTotalSellingPrice(totalDiscountedPrice.subtract(recalculatedCouponDiscount));
+                cart.setDiscount(calculatedDiscount.add(recalculatedCouponDiscount));
+            }
         } else {
             cart.setTotalSellingPrice(totalDiscountedPrice);
             cart.setDiscount(calculatedDiscount);

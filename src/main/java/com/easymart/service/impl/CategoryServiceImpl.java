@@ -27,7 +27,10 @@ public class CategoryServiceImpl implements CategoryService {
                         category.getId(),
                         category.getName(),
                         category.getCategoryId(),
-                        category.getLevel()
+                        category.getLevel(),
+                        category.getParentCategory() != null
+                                ? category.getParentCategory().getCategoryId()
+                                : null
                 ))
                 .toList();
     }

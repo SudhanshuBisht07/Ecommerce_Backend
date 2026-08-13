@@ -15,4 +15,9 @@ public interface CouponService {
     void deleteCoupon(Long id) throws Exception;
     Coupon updateCouponStatus(Long id, boolean isActive) throws Exception;
 
+    // Active, currently-in-date coupons a shopper can actually use right now.
+    // user is optional (null when the caller isn't authenticated) — when
+    // present, coupons they've already used are excluded.
+    List<Coupon> getAvailableCoupons(User user);
+
 }

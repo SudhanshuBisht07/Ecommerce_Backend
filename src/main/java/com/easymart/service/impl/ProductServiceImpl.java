@@ -37,43 +37,54 @@ public class ProductServiceImpl implements ProductService {
     private final WishlistRepository wishlistRepository;
     private final OrderItemRepository orderItemRepository;
 
-    @Override
-    public Product createProduct(CreateProductRequest req, Seller seller) {
-        Category category1=categoryRepository.findByCategoryId(req.getCategory());
-        if(category1==null){
-            Category category=new Category();
-            category.setCategoryId(req.getCategory());
-            category.setName(req.getCategory());
-            category.setLevel(1);
-            category1=categoryRepository.save(category);
+    // Resolves a seller's L1/L2/L3 category picks into the leaf Category
+    // node, creating any node that doesn't exist yet — this is what lets a
+    // seller define their own custom leaf category instead of being locked
+    // to the existing taxonomy. Shared by create and update so a custom
+    // category picked while editing a product is created the same way a
+    // custom category picked while adding one is.
+    private Category resolveLeafCategory(String category, String category2, String category3) {
+        Category category1 = categoryRepository.findByCategoryId(category);
+        if (category1 == null) {
+            Category c = new Category();
+            c.setCategoryId(category);
+            c.setName(category);
+            c.setLevel(1);
+            category1 = categoryRepository.save(c);
         }
         Category leafCategory = category1;
 
-        if(req.getCategory2()!=null && !req.getCategory2().isBlank()){
-            Category category2=categoryRepository.findByCategoryId(req.getCategory2());
-            if(category2==null){
-                Category category=new Category();
-                category.setCategoryId(req.getCategory2());
-                category.setName(req.getCategory2());
-                category.setLevel(2);
-                category.setParentCategory(category1);
-                category2=categoryRepository.save(category);
+        if (category2 != null && !category2.isBlank()) {
+            Category cat2 = categoryRepository.findByCategoryId(category2);
+            if (cat2 == null) {
+                Category c = new Category();
+                c.setCategoryId(category2);
+                c.setName(category2);
+                c.setLevel(2);
+                c.setParentCategory(category1);
+                cat2 = categoryRepository.save(c);
             }
-            leafCategory = category2;
+            leafCategory = cat2;
 
-            if(req.getCategory3()!=null && !req.getCategory3().isBlank()){
-                Category category3=categoryRepository.findByCategoryId(req.getCategory3());
-                if(category3==null){
-                    Category category=new Category();
-                    category.setCategoryId(req.getCategory3());
-                    category.setName(req.getCategory3());
-                    category.setLevel(3);
-                    category.setParentCategory(category2);
-                    category3=categoryRepository.save(category);
+            if (category3 != null && !category3.isBlank()) {
+                Category cat3 = categoryRepository.findByCategoryId(category3);
+                if (cat3 == null) {
+                    Category c = new Category();
+                    c.setCategoryId(category3);
+                    c.setName(category3);
+                    c.setLevel(3);
+                    c.setParentCategory(cat2);
+                    cat3 = categoryRepository.save(c);
                 }
-                leafCategory = category3;
+                leafCategory = cat3;
             }
         }
+        return leafCategory;
+    }
+
+    @Override
+    public Product createProduct(CreateProductRequest req, Seller seller) {
+        Category leafCategory = resolveLeafCategory(req.getCategory(), req.getCategory2(), req.getCategory3());
         Product product= new Product();
         product.setSeller(seller);
         product.setCategory(leafCategory);
@@ -83,7 +94,7 @@ public class ProductServiceImpl implements ProductService {
         product.setTitle(req.getTitle());
         product.setColor(req.getColor());
         product.setImages(req.getImages());
-        product.setSize(req.getSize());
+        product.setSizes(req.getSizes() != null ? req.getSizes() : new java.util.ArrayList<>());
         product.setSellingPrice(req.getSellingPrice());
         product.setMrpPrice(req.getMrpPrice());
         product.setWholesalePrice(req.getWholesalePrice());
@@ -125,7 +136,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Product updateProduct(Long productId, Product product) throws ProductException {
+    public Product updateProduct(Long productId, CreateProductRequest product) throws ProductException {
         Product existingProduct = findProductById(productId);
         if(product.getTitle() != null)
             existingProduct.setTitle(product.getTitle());
@@ -143,17 +154,18 @@ public class ProductServiceImpl implements ProductService {
             existingProduct.setColor(product.getColor());
         if(product.getImages() != null)
             existingProduct.setImages(product.getImages());
-        if(product.getSize() != null)
-            existingProduct.setSize(product.getSize());
-        // quantity is a primitive on Product, so there's no null-check to gate
-        // it the way the other fields do — the PUT contract for this endpoint
-        // is that the caller sends the full desired quantity, not a partial patch.
+        if(product.getSizes() != null)
+            existingProduct.setSizes(product.getSizes());
+        // quantity is a primitive, so there's no null-check to gate it the
+        // way the other fields do — the PUT contract for this endpoint is
+        // that the caller sends the full desired quantity, not a partial patch.
         existingProduct.setQuantity(product.getQuantity());
-        if(product.getCategory() != null && product.getCategory().getCategoryId() != null){
-            Category category = categoryRepository.findByCategoryId(product.getCategory().getCategoryId());
-            if(category != null){
-                existingProduct.setCategory(category);
-            }
+        if(product.getCategory() != null && !product.getCategory().isBlank()){
+            // Resolves (and creates, if needed) the leaf the same way
+            // createProduct does — so picking a brand-new custom category
+            // while editing works exactly like it does while adding.
+            Category leafCategory = resolveLeafCategory(product.getCategory(), product.getCategory2(), product.getCategory3());
+            existingProduct.setCategory(leafCategory);
         }
         if (existingProduct.getMrpPrice() != null && existingProduct.getSellingPrice() != null) {
             if (existingProduct.getSellingPrice().compareTo(existingProduct.getMrpPrice()) > 0) {
@@ -200,7 +212,8 @@ public class ProductServiceImpl implements ProductService {
                 predicates.add(criteriaBuilder.equal(root.get("color"),color));
             }
             if(size!=null&& !size.isEmpty()){
-                predicates.add(criteriaBuilder.equal(root.get("size"),size));
+                Join<Product, String> sizeJoin = root.join("sizes", jakarta.persistence.criteria.JoinType.INNER);
+                predicates.add(criteriaBuilder.equal(sizeJoin, size));
             }
 
             if(minPrice!=null){
@@ -243,5 +256,17 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<Product> getProductBySellerId(Long sellerId) {
         return productRepository.findBySeller_Id(sellerId);
+    }
+
+    @Override
+    public List<Product> getFeaturedProducts() {
+        return productRepository.findByFeaturedTrueOrderByCreatedAtDesc();
+    }
+
+    @Override
+    public Product setFeatured(Long productId, boolean featured) throws ProductException {
+        Product product = findProductById(productId);
+        product.setFeatured(featured);
+        return productRepository.save(product);
     }
 }

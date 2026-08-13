@@ -4,16 +4,20 @@ import com.easymart.domain.OrderStatus;
 import com.easymart.domain.ReturnStatus;
 import com.easymart.domain.ReturnType;
 import com.easymart.model.Order;
+import com.easymart.model.OrderItem;
 import com.easymart.model.ReturnRequest;
 import com.easymart.model.Seller;
+import com.easymart.model.SellerReport;
 import com.easymart.model.User;
 import com.easymart.repository.OrderRepository;
 import com.easymart.repository.ReturnRequestRepository;
 import com.easymart.service.ReturnRequestService;
+import com.easymart.service.SellerReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,6 +27,7 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
 
     private final ReturnRequestRepository returnRequestRepository;
     private final OrderRepository orderRepository;
+    private final SellerReportService sellerReportService;
 
     @Transactional
     @Override
@@ -81,10 +86,45 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
             throw new Exception("You don't have access to this return request");
         }
 
+        ReturnStatus previousStatus = request.getStatus();
+
         request.setStatus(status);
         request.setSellerNote(sellerNote);
         request.setResolvedAt(LocalDateTime.now());
 
-        return returnRequestRepository.save(request);
+        ReturnRequest saved = returnRequestRepository.save(request);
+
+        // A completed RETURN undoes the sale — the seller dashboard
+        // (profit/sales/order count) needs to reflect that instead of still
+        // counting it as a completed sale. EXCHANGE keeps the sale (a
+        // different item ships out), so it isn't reversed. Guarded on
+        // previousStatus so re-saving an already-completed request doesn't
+        // subtract twice.
+        if (status == ReturnStatus.COMPLETED
+                && previousStatus != ReturnStatus.COMPLETED
+                && request.getType() == ReturnType.RETURN) {
+            reverseOrderFromSellerReport(request.getOrder(), seller);
+        }
+
+        return saved;
+    }
+
+    private void reverseOrderFromSellerReport(Order order, Seller seller) {
+        BigDecimal orderProfit = BigDecimal.ZERO;
+        for (OrderItem item : order.getOrderItems()) {
+            BigDecimal wholesalePrice = item.getWholesalePrice() != null
+                    ? item.getWholesalePrice()
+                    : BigDecimal.ZERO;
+            BigDecimal itemWholesaleTotal = wholesalePrice.multiply(BigDecimal.valueOf(item.getQuantity()));
+            orderProfit = orderProfit.add(item.getSellingPrice().subtract(itemWholesaleTotal));
+        }
+
+        SellerReport report = sellerReportService.getSellerReport(seller);
+        report.setTotalOrders(Math.max(0, report.getTotalOrders() - 1));
+        report.setTotalEarnings(report.getTotalEarnings().subtract(order.getTotalSellingPrice()));
+        report.setTotalSales(report.getTotalSales().subtract(order.getTotalSellingPrice()));
+        report.setNetEarnings(report.getNetEarnings().subtract(orderProfit));
+        report.setTotalRefunds(report.getTotalRefunds().add(order.getTotalSellingPrice()));
+        sellerReportService.updateSellerReport(report);
     }
 }

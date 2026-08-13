@@ -19,4 +19,9 @@ public class CategoryResponse {
 
     private Integer level;
 
+    // categoryId of the parent taxonomy node (null for L1 categories). Lets
+    // the frontend group categories into a L1 -> L2 -> L3 tree instead of a
+    // flat list.
+    private String parentCategoryId;
+
 }

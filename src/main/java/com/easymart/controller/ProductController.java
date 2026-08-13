@@ -30,6 +30,22 @@ public class ProductController {
         return new ResponseEntity<>(products, HttpStatus.OK);
     }
 
+    // Admin-curated homepage carousel — NOT "all products". Must be declared
+    // before /{productId} so "featured" isn't parsed as a product id.
+    @GetMapping("/featured")
+    public ResponseEntity<List<Product>> getFeaturedProducts(){
+        return new ResponseEntity<>(productService.getFeaturedProducts(), HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PatchMapping("/{productId}/featured")
+    public ResponseEntity<Product> setFeatured(
+            @PathVariable Long productId,
+            @RequestParam boolean featured) throws ProductException {
+        Product product = productService.setFeatured(productId, featured);
+        return new ResponseEntity<>(product, HttpStatus.OK);
+    }
+
     @GetMapping
     public ResponseEntity<Page<Product>> getAllProducts(
             @RequestParam(required = false) String category,
